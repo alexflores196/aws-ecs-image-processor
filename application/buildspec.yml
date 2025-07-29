@@ -11,6 +11,8 @@ phases:
   build:
     commands:
       - echo Build started on `date`
+      # --- NEW: Change into the application directory ---
+      - cd application
       - echo Building the Docker image...
       - docker build -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
@@ -21,6 +23,8 @@ phases:
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Writing image definitions file...
-      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      # --- CORRECTED: The imagedefinitions.json file needs to be created in the root for the pipeline to find it ---
+      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > ../imagedefinitions.json
 artifacts:
+    # The path is now relative to the root of the project
     files: imagedefinitions.json
