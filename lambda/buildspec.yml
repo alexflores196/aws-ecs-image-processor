@@ -5,6 +5,8 @@ phases:
     runtime-versions:
       python: 3.9
     commands:
+      # --- NEW: Change into the lambda directory ---
+      - cd lambda
       - pip install --target ./package -r requirements.txt
   build:
     commands:
@@ -12,5 +14,7 @@ phases:
       - cd package
       - zip -r ../deployment_package.zip .
 artifacts:
+  # The path is now relative to the lambda directory
+  base-directory: 'lambda'
   files:
     - deployment_package.zip
