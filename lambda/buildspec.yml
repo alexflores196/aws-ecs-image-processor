@@ -5,18 +5,16 @@ phases:
     runtime-versions:
       python: 3.9
     commands:
-      # --- NEW: Change into the lambda directory ---
-      - cd lambda
-      - pip install --target ./package -r requirements.txt
+      # Install dependencies from the lambda folder into a new package folder at the root
+      - pip install --target ./package -r lambda/requirements.txt
   build:
     commands:
-      # The build process is now inside the 'lambda' directory,
-      # so it can find the lambda_function.py file.
-      - cp lambda_function.py ./package/
+      # Copy the function code from the lambda folder into the package folder
+      - cp lambda/lambda_function.py ./package/
+      # Go into the package folder to zip its contents
       - cd package
       - zip -r ../deployment_package.zip .
 artifacts:
-  # Tell CodeBuild where to find the artifact relative to the project root
-  base-directory: 'lambda'
+  # The final zip file is created in the root, so CodePipeline can find it
   files:
     - deployment_package.zip
