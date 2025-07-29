@@ -1,0 +1,16 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install --target ./package -r requirements.txt
+  build:
+    commands:
+      - cp lambda_function.py ./package/
+      - cd package
+      - zip -r ../deployment_package.zip .
+artifacts:
+  files:
+    - deployment_package.zip
