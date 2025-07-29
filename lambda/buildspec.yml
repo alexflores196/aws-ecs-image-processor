@@ -10,11 +10,13 @@ phases:
       - pip install --target ./package -r requirements.txt
   build:
     commands:
+      # The build process is now inside the 'lambda' directory,
+      # so it can find the lambda_function.py file.
       - cp lambda_function.py ./package/
       - cd package
       - zip -r ../deployment_package.zip .
 artifacts:
-  # The path is now relative to the lambda directory
+  # Tell CodeBuild where to find the artifact relative to the project root
   base-directory: 'lambda'
   files:
     - deployment_package.zip
