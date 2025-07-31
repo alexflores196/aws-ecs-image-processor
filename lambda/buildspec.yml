@@ -5,16 +5,16 @@ phases:
     runtime-versions:
       python: 3.9
     commands:
-      # Install dependencies from the lambda folder into a new package folder at the root
+      # Install dependencies into a temporary 'package' directory
       - pip install --target ./package -r lambda/requirements.txt
   build:
     commands:
-      # Copy the function code from the lambda folder into the package folder
+      # Copy the function code into the 'package' directory
       - cp lambda/lambda_function.py ./package/
-      # Go into the package folder to zip its contents
+      # Go into the 'package' directory to zip its contents
       - cd package
       - zip -r ../deployment_package.zip .
 artifacts:
-  # The final zip file is created in the root, so CodePipeline can find it
+  # The final zip file is created in the root of the project checkout
   files:
     - deployment_package.zip
