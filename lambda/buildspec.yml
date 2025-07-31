@@ -1,36 +1,20 @@
 version: 0.2
 
 phases:
-  pre_build:
+  install:
+    runtime-versions:
+      python: 3.9
     commands:
-      # --- Log in to Docker Hub ---
-      - echo Logging in to Docker Hub...
-      - DOCKERHUB_CREDENTIALS=$(aws secretsmanager get-secret-value --secret-id docker-hub-credentials --query SecretString --output text)
-      - DOCKERHUB_USERNAME=$(echo $DOCKERHUB_CREDENTIALS | jq -r .username)
-      - DOCKERHUB_PASSWORD=$(echo $DOCKERHUB_CREDENTIALS | jq -r .password)
-      # --- Debugging Step: Print the username ---
-      - echo "Attempting to log in to Docker Hub with username: $DOCKERHUB_USERNAME"
-      - echo "$DOCKERHUB_PASSWORD" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-      # --- End Docker Hub Login ---
-      - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME
-      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      # Install dependencies from the lambda folder into a new package folder at the root
+      - pip install --target ./package -r lambda/requirements.txt
   build:
     commands:
-      - echo Build started on `date`
-      - cd application
-      - echo Building the Docker image...
-      - docker build -t $REPOSITORY_URI:latest .
-      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
-  post_build:
-    commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
-      - docker push $REPOSITORY_URI:latest
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Writing image definitions file...
-      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > ../imagedefinitions.json
+      # Copy the function code from the lambda folder into the package folder
+      - cp lambda/lambda_function.py ./package/
+      # Go into the package folder to zip its contents
+      - cd package
+      - zip -r ../deployment_package.zip .
 artifacts:
-    files: imagedefinitions.json
+  # The final zip file is created in the root, so CodePipeline can find it
+  files:
+    - deployment_package.zip
