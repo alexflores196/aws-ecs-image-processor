@@ -25,6 +25,11 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                     },
+                    keyframes: {
+                        shimmer: {
+                            '100%': { transform: 'translateX(100%)' },
+                        },
+                    },
                 }
             }
         }
@@ -54,7 +59,7 @@
         </header>
 
         <!-- Main Alpine.js Component -->
-        <main class="container mx-auto px-4 py-8" x-data="galleryApp()">
+        <main class="container mx-auto px-4 py-8" x-data="galleryApp">
             <div class="text-center mb-12">
                 <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">The Ultimate Cloud Image Toolkit</h2>
                 <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600 dark:text-gray-400">Upload, process, and transform your images with a powerful, serverless engine. Built on a highly available AWS architecture for unmatched performance and reliability.</p>
@@ -67,30 +72,31 @@
                         <h3 class="text-xl font-semibold mb-4 text-center">Upload New Images</h3>
                         <div class="space-y-4">
                             <div class="flex items-center justify-center w-full">
-                                <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
-                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <div x-show="filesToUpload.length === 0">
+                                <label for="dropzone-file" class="flex flex-col items-center justify-center w-full min-h-[12rem] border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 p-4">
+                                    <div class="flex flex-col items-center justify-center text-center">
+                                        <!-- Default State -->
+                                        <div x-show="previews.length === 0">
                                             <svg class="w-10 h-10 mb-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
                                             <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">Upload multiple files at once</p>
                                         </div>
-                                        <div x-show="filesToUpload.length > 0" class="text-center">
-                                            <svg class="w-10 h-10 mb-4 text-green-500 dark:text-green-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <p class="font-semibold text-gray-700 dark:text-gray-200"><span x-text="filesToUpload.length"></span> file(s) selected</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">Ready to upload!</p>
+                                        <!-- File Preview State -->
+                                        <div x-show="previews.length > 0" class="flex flex-wrap justify-center gap-4">
+                                            <template x-for="preview in previews" :key="preview.name">
+                                                <div class="flex flex-col items-center">
+                                                    <img :src="preview.url" class="w-20 h-20 object-cover rounded-lg border border-gray-300 dark:border-gray-600">
+                                                    <p class="text-xs mt-1 text-gray-600 dark:text-gray-400 truncate w-20" x-text="preview.name"></p>
+                                                </div>
+                                            </template>
                                         </div>
                                     </div>
-                                    <input id="dropzone-file" name="files" type="file" class="hidden" multiple @change="filesToUpload = Array.from($event.target.files)" />
+                                    <input id="dropzone-file" name="files" type="file" class="hidden" multiple @change="handleFileSelect" accept="image/*" />
                                 </label>
                             </div>
-                            <!-- Progress Bars -->
                             <div x-show="isUploading" class="space-y-2">
-                                <template x-for="file in filesToUpload" :key="file.name">
-                                    <div class="w-full bg-gray-200 rounded-full dark:bg-gray-700">
-                                        <div class="bg-indigo-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" :style="`width: ${uploadProgress[file.name] || 0}%`" x-text="`${uploadProgress[file.name] || 0}%`"></div>
-                                        <p class="text-xs text-center text-gray-500 mt-1" x-text="file.name"></p>
-                                    </div>
-                                </template>
+                                <div class="w-full bg-gray-200 rounded-full dark:bg-gray-700">
+                                    <div class="bg-indigo-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" :style="`width: ${uploadProgress}%`" x-text="`${uploadProgress}%`"></div>
+                                </div>
                             </div>
                             <button @click="uploadFiles" :disabled="isUploading || filesToUpload.length === 0" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 disabled:bg-indigo-400 disabled:cursor-not-allowed">
                                 <span x-show="!isUploading">Upload <span x-text="filesToUpload.length"></span> Image(s)</span>
@@ -109,7 +115,20 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Dynamic Gallery via Alpine.js -->
+                <!-- Loading Skeletons -->
+                <template x-if="isLoading">
+                    <template x-for="i in 3">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
+                            <div class="w-full h-56 bg-gray-300 dark:bg-gray-700"></div>
+                            <div class="p-5 space-y-4">
+                                <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+                                <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                                <div class="h-10 bg-gray-300 dark:bg-gray-700 rounded mt-6"></div>
+                            </div>
+                        </div>
+                    </template>
+                </template>
+                <!-- Dynamic Gallery -->
                 <template x-for="image in galleryImages" :key="image.original_key">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <a :href="image.original_url" target="_blank" title="View full size original"><img :src="image.thumbnail_url" class="w-full h-56 object-cover" alt="Thumbnail"></a>
@@ -141,10 +160,11 @@
 
     <!-- JavaScript Logic -->
     <script>
-        function galleryApp() {
-            return {
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('galleryApp', () => ({
                 filesToUpload: [],
-                uploadProgress: {},
+                previews: [],
+                uploadProgress: 0,
                 isUploading: false,
                 galleryImages: [],
                 isLoading: true,
@@ -154,7 +174,20 @@
                     this.fetchImages();
                 },
 
+                handleFileSelect(event) {
+                    this.filesToUpload = Array.from(event.target.files);
+                    this.previews = [];
+                    for (const file of this.filesToUpload) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.previews.push({ name: file.name, url: e.target.result });
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                },
+
                 fetchImages() {
+                    this.isLoading = true;
                     fetch('/api/images')
                         .then(response => response.json())
                         .then(data => {
@@ -170,32 +203,27 @@
                 uploadFiles() {
                     if (this.filesToUpload.length === 0) return;
                     this.isUploading = true;
-                    this.uploadProgress = {};
+                    this.uploadProgress = 0;
 
                     const formData = new FormData();
                     this.filesToUpload.forEach(file => {
                         formData.append('files', file);
                     });
 
-                    // We use XMLHttpRequest here to get progress events, which fetch() doesn't support directly
                     const xhr = new XMLHttpRequest();
                     xhr.open('POST', '/api/upload', true);
 
                     xhr.upload.onprogress = (event) => {
                         if (event.lengthComputable) {
-                            const percentComplete = Math.round((event.loaded / event.total) * 100);
-                            // For multi-file, we just show an overall progress
-                            this.filesToUpload.forEach(file => {
-                                this.uploadProgress[file.name] = percentComplete;
-                            });
+                            this.uploadProgress = Math.round((event.loaded / event.total) * 100);
                         }
                     };
 
                     xhr.onload = () => {
                         this.isUploading = false;
                         this.filesToUpload = [];
+                        this.previews = [];
                         if (xhr.status === 200) {
-                            // Start polling for new images
                             this.startPolling();
                         } else {
                             console.error('Upload failed:', xhr.responseText);
@@ -206,6 +234,7 @@
                     xhr.onerror = () => {
                         this.isUploading = false;
                         this.filesToUpload = [];
+                        this.previews = [];
                         console.error('Upload error:', xhr.statusText);
                         alert('An error occurred during upload. Please try again.');
                     };
@@ -215,15 +244,15 @@
 
                 startPolling() {
                     let attempts = 0;
-                    const maxAttempts = 10; // Poll for a max of 20 seconds
+                    const maxAttempts = 15; // Poll for 30 seconds
+                    const initialImageCount = this.galleryImages.length;
 
                     this.pollingInterval = setInterval(() => {
-                        const initialImageCount = this.galleryImages.length;
-
                         fetch('/api/images')
                             .then(response => response.json())
                             .then(data => {
-                                if (data.length > initialImageCount) {
+                                // Check if the number of new images matches the number of uploaded files
+                                if (data.length >= initialImageCount + this.filesToUpload.length) {
                                     this.galleryImages = data;
                                     clearInterval(this.pollingInterval);
                                 }
@@ -232,12 +261,12 @@
                         attempts++;
                         if (attempts >= maxAttempts) {
                             clearInterval(this.pollingInterval);
-                            this.fetchImages(); // Do one final fetch
+                            this.fetchImages(); // Do one final fetch to be sure
                         }
-                    }, 2000); // Poll every 2 seconds
+                    }, 2000);
                 }
-            }
-        }
+            }));
+        });
     </script>
 </body>
 </html>
