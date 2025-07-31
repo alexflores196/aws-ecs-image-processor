@@ -1,7 +1,7 @@
 import os
 import boto3
 import uuid
-from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session
+from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session, jsonify
 from PIL import Image
 import io
 
@@ -19,67 +19,84 @@ s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 
+
+# --- Main Page Route ---
 @app.route('/')
 def index():
+    # The main page now just renders the HTML shell.
+    # All data will be loaded dynamically by JavaScript.
+    return render_template('index.html')
+
+
+# --- NEW: API Endpoint to get images for the gallery ---
+@app.route('/api/images')
+def get_images():
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
-    
+
     session_id = session['session_id']
     images = []
     try:
         prefix = f"{session_id}/thumbnails/"
         response = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
-        
+
         if 'Contents' in response:
             for thumb in response['Contents']:
                 thumb_key = thumb['Key']
-                original_key = os.path.basename(thumb_key).replace('thumb-', '')
-                full_original_key = f"{session_id}/{original_key}"
+                original_filename = os.path.basename(thumb_key).replace('thumb-', '')
+                full_original_key = f"{session_id}/{original_filename}"
 
                 db_response = table.get_item(Key={'ImageKey': full_original_key})
                 item_data = db_response.get('Item', {})
-                
+
                 if item_data:
                     images.append({
-                        'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
-                        'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
+                        'thumbnail_url': s3.generate_presigned_url('get_object',
+                                                                   Params={'Bucket': S3_BUCKET, 'Key': thumb_key},
+                                                                   ExpiresIn=3600),
+                        'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET,
+                                                                                        'Key': full_original_key},
+                                                                  ExpiresIn=3600),
                         'original_key': full_original_key,
                         'basic_metadata': item_data.get('BasicMetadata', {}),
                         'enhanced_metadata': item_data.get('EnhancedMetadata', {})
                     })
     except Exception as e:
-        print(f"Error retrieving data: {e}")
-        images = []
-        
-    return render_template('index.html', images=images, has_images=(len(images) > 0))
+        print(f"Error retrieving API data: {e}")
+        return jsonify({'error': 'Could not retrieve images'}), 500
 
-@app.route('/upload', methods=['POST'])
-def upload():
+    return jsonify(images)
+
+
+# --- NEW: API Endpoint for modern JavaScript-based uploads ---
+@app.route('/api/upload', methods=['POST'])
+def api_upload():
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
     session_id = session['session_id']
 
-    if 'file' not in request.files:
-        return redirect(url_for('index'))
-    file = request.files['file']
-    if file.filename == '':
-        return redirect(url_for('index'))
-    if file:
-        try:
-            # --- NEW: Generate a unique filename ---
-            # Get the file extension (e.g., .png, .jpg)
-            file_extension = os.path.splitext(file.filename)[1]
-            # Create a new unique filename
-            unique_filename = f"{str(uuid.uuid4())}{file_extension}"
-            
-            # Prepend the session_id to the unique filename
-            upload_key = f"{session_id}/{unique_filename}"
-            
-            s3.upload_fileobj(file, S3_BUCKET, upload_key, ExtraArgs={"ContentType": file.content_type})
-        except Exception as e:
-            print(f"Error uploading to S3: {e}")
-    return redirect(url_for('index'))
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files part in the request'}), 400
 
+    files = request.files.getlist('files')
+
+    for file in files:
+        if file.filename == '':
+            continue
+        if file:
+            try:
+                file_extension = os.path.splitext(file.filename)[1]
+                unique_filename = f"{str(uuid.uuid4())}{file_extension}"
+                upload_key = f"{session_id}/{unique_filename}"
+                s3.upload_fileobj(file, S3_BUCKET, upload_key, ExtraArgs={"ContentType": file.content_type})
+            except Exception as e:
+                print(f"Error uploading API file: {e}")
+                return jsonify({'error': f'Failed to upload {file.filename}'}), 500
+
+    return jsonify({'message': 'Files uploaded successfully'}), 200
+
+
+# --- Conversion and Deletion routes remain largely the same ---
 @app.route('/convert')
 def convert():
     try:
@@ -97,16 +114,16 @@ def convert():
 
         if width and height:
             img = img.resize((width, height), Image.Resampling.LANCZOS)
-        
+
         buffer = io.BytesIO()
         img_format_pil = 'JPEG' if target_format == 'jpg' else target_format.upper()
-        
+
         if img.mode == 'RGBA' and (img_format_pil == 'JPEG'):
-             img = img.convert('RGB')
+            img = img.convert('RGB')
 
         img.save(buffer, format=img_format_pil)
         buffer.seek(0)
-        
+
         base_name = os.path.splitext(os.path.basename(key))[0]
         download_name = f"{base_name}_converted.{target_format}"
 
@@ -120,7 +137,7 @@ def convert():
         print(f"Error converting image: {e}")
         abort(500, 'Error during image conversion')
 
-# --- NEW: Delete Route for a single image ---
+
 @app.route('/delete', methods=['POST'])
 def delete():
     try:
@@ -135,12 +152,11 @@ def delete():
         print(f"Error deleting image: {e}")
     return redirect(url_for('index'))
 
-# --- NEW: Clear Route for the entire session ---
+
 @app.route('/clear', methods=['POST'])
 def clear():
     if 'session_id' in session:
         session_id = session['session_id']
-        # Delete all objects for this session from S3
         s3_paginator = s3.get_paginator('list_objects_v2')
         pages = s3_paginator.paginate(Bucket=S3_BUCKET, Prefix=f"{session_id}/")
         for page in pages:
@@ -148,9 +164,10 @@ def clear():
                 for obj in page['Contents']:
                     s3.delete_object(Bucket=S3_BUCKET, Key=obj['Key'])
                     table.delete_item(Key={'ImageKey': obj['Key']})
-    
-    session.clear() # Clear the user's session cookie
+
+    session.clear()
     return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
