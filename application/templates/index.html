@@ -74,13 +74,11 @@
                             <div class="flex items-center justify-center w-full">
                                 <label for="dropzone-file" class="flex flex-col items-center justify-center w-full min-h-[12rem] border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 p-4">
                                     <div class="flex flex-col items-center justify-center text-center">
-                                        <!-- Default State -->
                                         <div x-show="previews.length === 0">
                                             <svg class="w-10 h-10 mb-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
                                             <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">Upload multiple files at once</p>
                                         </div>
-                                        <!-- File Preview State -->
                                         <div x-show="previews.length > 0" class="flex flex-wrap justify-center gap-4">
                                             <template x-for="preview in previews" :key="preview.name">
                                                 <div class="flex flex-col items-center">
@@ -115,7 +113,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Loading Skeletons -->
                 <template x-if="isLoading">
                     <template x-for="i in 3">
                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
@@ -128,7 +125,6 @@
                         </div>
                     </template>
                 </template>
-                <!-- Dynamic Gallery -->
                 <template x-for="image in galleryImages" :key="image.original_key">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <a :href="image.original_url" target="_blank" title="View full size original"><img :src="image.thumbnail_url" class="w-full h-56 object-cover" alt="Thumbnail"></a>
@@ -146,7 +142,6 @@
                         </div>
                     </div>
                 </template>
-                <!-- Empty State -->
                 <div x-show="!isLoading && galleryImages.length === 0" class="col-span-1 md:col-span-2 lg:col-span-3" x-cloak>
                     <div class="text-center p-12 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">Your gallery is empty</h3><p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Upload an image to get started!</p></div>
                 </div>
@@ -158,7 +153,7 @@
         </footer>
     </div>
 
-    <!-- JavaScript Logic -->
+    <!-- CORRECTED JavaScript Logic -->
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('galleryApp', () => ({
@@ -177,6 +172,12 @@
                 handleFileSelect(event) {
                     this.filesToUpload = Array.from(event.target.files);
                     this.previews = [];
+                    // Simple validation
+                    if (this.filesToUpload.some(file => !file.type.startsWith('image/'))) {
+                        alert('Please select only image files.');
+                        this.filesToUpload = [];
+                        return;
+                    }
                     for (const file of this.filesToUpload) {
                         const reader = new FileReader();
                         reader.onload = (e) => {
@@ -204,6 +205,7 @@
                     if (this.filesToUpload.length === 0) return;
                     this.isUploading = true;
                     this.uploadProgress = 0;
+                    const initialImageCount = this.galleryImages.length;
 
                     const formData = new FormData();
                     this.filesToUpload.forEach(file => {
@@ -221,10 +223,9 @@
 
                     xhr.onload = () => {
                         this.isUploading = false;
-                        this.filesToUpload = [];
                         this.previews = [];
                         if (xhr.status === 200) {
-                            this.startPolling();
+                            this.startPolling(initialImageCount);
                         } else {
                             console.error('Upload failed:', xhr.responseText);
                             alert('An error occurred during upload. Please try again.');
@@ -233,7 +234,6 @@
 
                     xhr.onerror = () => {
                         this.isUploading = false;
-                        this.filesToUpload = [];
                         this.previews = [];
                         console.error('Upload error:', xhr.statusText);
                         alert('An error occurred during upload. Please try again.');
@@ -242,19 +242,18 @@
                     xhr.send(formData);
                 },
 
-                startPolling() {
+                startPolling(initialImageCount) {
                     let attempts = 0;
-                    const maxAttempts = 15; // Poll for 30 seconds
-                    const initialImageCount = this.galleryImages.length;
+                    const maxAttempts = 15;
 
                     this.pollingInterval = setInterval(() => {
                         fetch('/api/images')
                             .then(response => response.json())
                             .then(data => {
-                                // Check if the number of new images matches the number of uploaded files
                                 if (data.length >= initialImageCount + this.filesToUpload.length) {
                                     this.galleryImages = data;
                                     clearInterval(this.pollingInterval);
+                                    this.filesToUpload = [];
                                 }
                             });
 
@@ -262,6 +261,7 @@
                         if (attempts >= maxAttempts) {
                             clearInterval(this.pollingInterval);
                             this.fetchImages(); // Do one final fetch to be sure
+                            this.filesToUpload = [];
                         }
                     }, 2000);
                 }
