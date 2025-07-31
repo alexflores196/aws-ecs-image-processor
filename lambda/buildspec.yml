@@ -1,25 +1,24 @@
 version: 0.2
 
 phases:
-  install:
-    runtime-versions:
-      python: 3.9
+  pre_build:
     commands:
-      # We will work directly in the root of the project
-      - echo "Installing dependencies..."
-      - pip install --target ./package -r lambda/requirements.txt
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/lambda-image-processor
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
   build:
     commands:
-      # Copy the function code into the package directory
-      - echo "Copying function code..."
-      - cp lambda/lambda_function.py ./package/
+      - echo "Build started on `date`"
+      - cd lambda
+      - echo "Building the Docker image for Lambda..."
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      # Go into the package directory to zip its contents correctly
-      - echo "Creating deployment package..."
-      - cd package
-      - zip -r ../deployment_package.zip .
-artifacts:
-  # The final zip file is created in the root, so CodePipeline can find it
-  files:
-    - deployment_package.zip
+      - echo "Build completed on `date`"
+      - echo "Pushing the Docker image to ECR..."
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      # We don't need an artifact for this build, as the image is pushed directly to ECR
