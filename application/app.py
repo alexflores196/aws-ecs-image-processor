@@ -1,7 +1,7 @@
 import os
 import boto3
 import uuid
-from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session
 from PIL import Image
 import io
 
@@ -20,17 +20,8 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 
 
-# --- Main Page Route ---
 @app.route('/')
 def index():
-    # The main page now just renders the HTML shell.
-    # All data will be loaded dynamically by JavaScript.
-    return render_template('index.html')
-
-
-# --- NEW: API Endpoint to get images for the gallery ---
-@app.route('/api/images')
-def get_images():
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
 
@@ -62,41 +53,36 @@ def get_images():
                         'enhanced_metadata': item_data.get('EnhancedMetadata', {})
                     })
     except Exception as e:
-        print(f"Error retrieving API data: {e}")
-        return jsonify({'error': 'Could not retrieve images'}), 500
+        print(f"Error retrieving data: {e}")
+        images = []
 
-    return jsonify(images)
+    return render_template('index.html', images=images, has_images=(len(images) > 0))
 
 
-# --- NEW: API Endpoint for modern JavaScript-based uploads ---
-@app.route('/api/upload', methods=['POST'])
-def api_upload():
+@app.route('/upload', methods=['POST'])
+def upload():
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
     session_id = session['session_id']
 
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files part in the request'}), 400
-
+    # Handle multi-file uploads from a standard form
     files = request.files.getlist('files')
+    if not files:
+        return redirect(url_for('index'))
 
     for file in files:
-        if file.filename == '':
-            continue
-        if file:
+        if file and file.filename != '':
             try:
                 file_extension = os.path.splitext(file.filename)[1]
                 unique_filename = f"{str(uuid.uuid4())}{file_extension}"
                 upload_key = f"{session_id}/{unique_filename}"
                 s3.upload_fileobj(file, S3_BUCKET, upload_key, ExtraArgs={"ContentType": file.content_type})
             except Exception as e:
-                print(f"Error uploading API file: {e}")
-                return jsonify({'error': f'Failed to upload {file.filename}'}), 500
+                print(f"Error uploading file {file.filename}: {e}")
 
-    return jsonify({'message': 'Files uploaded successfully'}), 200
+    return redirect(url_for('index'))
 
 
-# --- Conversion and Deletion routes remain largely the same ---
 @app.route('/convert')
 def convert():
     try:
@@ -161,9 +147,13 @@ def clear():
         pages = s3_paginator.paginate(Bucket=S3_BUCKET, Prefix=f"{session_id}/")
         for page in pages:
             if 'Contents' in page:
-                for obj in page['Contents']:
-                    s3.delete_object(Bucket=S3_BUCKET, Key=obj['Key'])
-                    table.delete_item(Key={'ImageKey': obj['Key']})
+                # Batch delete objects for efficiency
+                objects_to_delete = [{'Key': obj['Key']} for obj in page['Contents']]
+                s3.delete_objects(Bucket=S3_BUCKET, Delete={'Objects': objects_to_delete})
+                # Batch delete from DynamoDB
+                with table.batch_writer() as batch:
+                    for obj in objects_to_delete:
+                        batch.delete_item(Key={'ImageKey': obj['Key']})
 
     session.clear()
     return redirect(url_for('index'))

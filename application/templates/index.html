@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Alpine.js for interactivity -->
+    <!-- Alpine.js for dark mode toggle only -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <!-- Google Fonts: Inter -->
@@ -16,7 +16,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Custom Tailwind Config & Styles -->
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -25,23 +24,12 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                     },
-                    keyframes: {
-                        shimmer: {
-                            '100%': { transform: 'translateX(100%)' },
-                        },
-                    },
                 }
             }
         }
     </script>
     <style>
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
-        .dark ::-webkit-scrollbar-track { background: #2d3748; }
-        .dark ::-webkit-scrollbar-thumb { background: #4a5568; }
-        .dark ::-webkit-scrollbar-thumb:hover { background: #718096; }
+        body { font-family: 'Inter', sans-serif; }
         [x-cloak] { display: none !important; }
     </style>
 </head>
@@ -49,7 +37,6 @@
 
     <div class="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
-        <!-- Header -->
         <header class="container mx-auto px-4 py-6 flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <svg class="w-8 h-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.562L16.5 21.75l-.398-1.188a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.188-.398a2.25 2.25 0 001.423-1.423L16.5 15.75l.398 1.188a2.25 2.25 0 001.423 1.423L19.5 18.75l-1.188.398a2.25 2.25 0 00-1.423 1.423z" /></svg>
@@ -58,93 +45,60 @@
             <button @click="darkMode = !darkMode" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"><svg x-show="!darkMode" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg><svg x-show="darkMode" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg></button>
         </header>
 
-        <!-- Main Alpine.js Component -->
-        <main class="container mx-auto px-4 py-8" x-data="galleryApp()">
+        <main class="container mx-auto px-4 py-8">
             <div class="text-center mb-12">
                 <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">The Ultimate Cloud Image Toolkit</h2>
                 <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600 dark:text-gray-400">Upload, process, and transform your images with a powerful, serverless engine. Built on a highly available AWS architecture for unmatched performance and reliability.</p>
             </div>
 
-            <!-- Upload Form -->
             <div class="max-w-3xl mx-auto mb-12">
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
                     <div class="p-6">
                         <h3 class="text-xl font-semibold mb-4 text-center">Upload New Images</h3>
-                        <div class="space-y-4">
-                            <div class="flex items-center justify-center w-full">
-                                <label for="dropzone-file" class="flex flex-col items-center justify-center w-full min-h-[12rem] border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 p-4">
-                                    <div class="flex flex-col items-center justify-center text-center">
-                                        <div x-show="previews.length === 0">
-                                            <svg class="w-10 h-10 mb-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
-                                            <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">Upload multiple files at once</p>
-                                        </div>
-                                        <div x-show="previews.length > 0" class="flex flex-wrap justify-center gap-4">
-                                            <template x-for="preview in previews" :key="preview.name">
-                                                <div class="flex flex-col items-center">
-                                                    <img :src="preview.url" class="w-20 h-20 object-cover rounded-lg border border-gray-300 dark:border-gray-600">
-                                                    <p class="text-xs mt-1 text-gray-600 dark:text-gray-400 truncate w-20" x-text="preview.name"></p>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                    <input id="dropzone-file" name="files" type="file" class="hidden" multiple @change="handleFileSelect" accept="image/*" />
-                                </label>
+                        <form action="/upload" method="post" enctype="multipart/form-data" class="space-y-4">
+                            <div>
+                                <label for="file-upload" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select images to upload</label>
+                                <input id="file-upload" name="files" type="file" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
                             </div>
-                            <div x-show="isUploading" class="space-y-2">
-                                <div class="w-full bg-gray-200 rounded-full dark:bg-gray-700">
-                                    <div class="bg-indigo-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" :style="`width: ${uploadProgress}%`" x-text="`${uploadProgress}%`"></div>
-                                </div>
-                            </div>
-                            <button @click="uploadFiles" :disabled="isUploading || filesToUpload.length === 0" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 disabled:bg-indigo-400 disabled:cursor-not-allowed">
-                                <span x-show="!isUploading">Upload <span x-text="filesToUpload.length"></span> Image(s)</span>
-                                <span x-show="isUploading">Uploading...</span>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300">
+                                Upload
                             </button>
-                        </div>
+                        </form>
                     </div>
                 </div>
             </div>
 
             <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
                 <h3 class="text-2xl font-bold mb-3 sm:mb-0">Your Session Gallery</h3>
-                <form x-show="galleryImages.length > 0" action="/clear" method="post" x-cloak>
+                {% if has_images %}
+                <form action="/clear" method="post">
                     <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors" onclick="return confirm('Are you sure you want to clear all images and start over?');"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg><span>Clear All</span></button>
                 </form>
+                {% endif %}
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <template x-if="isLoading">
-                    <template x-for="i in 3">
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
-                            <div class="w-full h-56 bg-gray-300 dark:bg-gray-700"></div>
-                            <div class="p-5 space-y-4">
-                                <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
-                                <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
-                                <div class="h-10 bg-gray-300 dark:bg-gray-700 rounded mt-6"></div>
-                            </div>
+                {% for image in images %}
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <a href="{{ image.original_url }}" target="_blank" title="View full size original"><img src="{{ image.thumbnail_url }}" class="w-full h-56 object-cover" alt="Thumbnail"></a>
+                    <div class="p-5">
+                        <div x-data="{ tab: 'basic' }">
+                            <div class="border-b border-gray-200 dark:border-gray-700 mb-4"><nav class="-mb-px flex space-x-6" aria-label="Tabs"><button @click="tab = 'basic'" :class="{ 'border-indigo-500 text-indigo-600': tab === 'basic', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300': tab !== 'basic' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Basic</button><button @click="tab = 'enhanced'" :class="{ 'border-indigo-500 text-indigo-600': tab === 'enhanced', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300': tab !== 'enhanced' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Enhanced</button></nav></div>
+                            <div x-show="tab === 'basic'" class="text-sm"><ul class="space-y-2"><li class="flex justify-between"><span>Format:</span> <span class="font-medium text-gray-900 dark:text-white">{{ image.basic_metadata.format }}</span></li><li class="flex justify-between"><span>Size:</span> <span class="font-medium text-gray-900 dark:text-white">{{ image.basic_metadata.size }}</span></li><li class="flex justify-between"><span>Mode:</span> <span class="font-medium text-gray-900 dark:text-white">{{ image.basic_metadata.mode }}</span></li></ul></div>
+                            <div x-show="tab === 'enhanced'" class="text-sm h-36 overflow-y-auto"><ul class="space-y-2">{% for key, value in image.enhanced_metadata.items() %}<li class="flex justify-between"><span>{{ key }}:</span> <span class="font-medium text-gray-900 dark:text-white text-right truncate">{{ value }}</span></li>{% else %}<li class="text-gray-500">No enhanced metadata found.</li>{% endfor %}</ul></div>
                         </div>
-                    </template>
-                </template>
-                <template x-for="image in galleryImages" :key="image.original_key">
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <a :href="image.original_url" target="_blank" title="View full size original"><img :src="image.thumbnail_url" class="w-full h-56 object-cover" alt="Thumbnail"></a>
-                        <div class="p-5">
-                            <div x-data="{ tab: 'basic' }">
-                                <div class="border-b border-gray-200 dark:border-gray-700 mb-4"><nav class="-mb-px flex space-x-6" aria-label="Tabs"><button @click="tab = 'basic'" :class="{ 'border-indigo-500 text-indigo-600': tab === 'basic', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300': tab !== 'basic' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Basic</button><button @click="tab = 'enhanced'" :class="{ 'border-indigo-500 text-indigo-600': tab === 'enhanced', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300': tab !== 'enhanced' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Enhanced</button></nav></div>
-                                <div x-show="tab === 'basic'" class="text-sm"><ul class="space-y-2"><li class="flex justify-between"><span>Format:</span> <span class="font-medium text-gray-900 dark:text-white" x-text="image.basic_metadata.format"></span></li><li class="flex justify-between"><span>Size:</span> <span class="font-medium text-gray-900 dark:text-white" x-text="image.basic_metadata.size"></span></li><li class="flex justify-between"><span>Mode:</span> <span class="font-medium text-gray-900 dark:text-white" x-text="image.basic_metadata.mode"></span></li></ul></div>
-                                <div x-show="tab === 'enhanced'" class="text-sm h-36 overflow-y-auto"><ul class="space-y-2"><template x-for="[key, value] in Object.entries(image.enhanced_metadata)" :key="key"><li class="flex justify-between"><span><span x-text="key"></span>:</span> <span class="font-medium text-gray-900 dark:text-white text-right truncate" x-text="value"></span></li></template><template x-if="Object.keys(image.enhanced_metadata).length === 0"><li class="text-gray-500">No enhanced metadata found.</li></template></ul></div>
-                            </div>
-                            <div class="mt-6">
-                                <h4 class="font-semibold mb-3">Actions</h4>
-                                <form action="/convert" method="get" class="space-y-3"><input type="hidden" name="key" :value="image.original_key"><div><label :for="'format-' + image.original_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Format</label><select name="format" :id="'format-' + image.original_key" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"><option value="jpg">JPG</option><option value="png">PNG</option><option value="webp">WEBP</option><option value="gif">GIF</option><option value="bmp">BMP</option></select></div><div class="grid grid-cols-2 gap-3"><div><label :for="'width-' + image.original_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Width</label><input type="number" name="width" :id="'width-' + image.original_key" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 1920"></div><div><label :for="'height-' + image.original_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Height</label><input type="number" name="height" :id="'height-' + image.original_key" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 1080"></div></div><button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg><span>Download</span></button></form>
-                                <form action="/delete" method="post" class="mt-2"><input type="hidden" name="key" :value="image.original_key"><button type="submit" class="w-full bg-transparent hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors" onclick="return confirm('Are you sure you want to delete this image?');"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg><span>Delete</span></button></form>
-                            </div>
+                        <div class="mt-6">
+                            <h4 class="font-semibold mb-3">Actions</h4>
+                            <form action="/convert" method="get" class="space-y-3"><input type="hidden" name="key" value="{{ image.original_key }}"><div><label for="format-{{ loop.index }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Format</label><select name="format" id="format-{{ loop.index }}" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"><option value="jpg">JPG</option><option value="png">PNG</option><option value="webp">WEBP</option><option value="gif">GIF</option><option value="bmp">BMP</option></select></div><div class="grid grid-cols-2 gap-3"><div><label for="width-{{ loop.index }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Width</label><input type="number" name="width" id="width-{{ loop.index }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 1920"></div><div><label for="height-{{ loop.index }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Height</label><input type="number" name="height" id="height-{{ loop.index }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 1080"></div></div><button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg><span>Download</span></button></form>
+                            <form action="/delete" method="post" class="mt-2"><input type="hidden" name="key" value="{{ image.original_key }}"><button type="submit" class="w-full bg-transparent hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors" onclick="return confirm('Are you sure you want to delete this image?');"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg><span>Delete</span></button></form>
                         </div>
                     </div>
-                </template>
-                <div x-show="!isLoading && galleryImages.length === 0" class="col-span-1 md:col-span-2 lg:col-span-3" x-cloak>
+                </div>
+                {% else %}
+                <div class="col-span-1 md:col-span-2 lg:col-span-3">
                     <div class="text-center p-12 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">Your gallery is empty</h3><p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Upload an image to get started!</p></div>
                 </div>
+                {% endfor %}
             </div>
         </main>
 
@@ -153,120 +107,5 @@
         </footer>
     </div>
 
-    <!-- CORRECTED JavaScript Logic -->
-    <script>
-        function galleryApp() {
-            return {
-                filesToUpload: [],
-                previews: [],
-                uploadProgress: 0,
-                isUploading: false,
-                galleryImages: [],
-                isLoading: true,
-                pollingInterval: null,
-
-                init() {
-                    this.fetchImages();
-                },
-
-                handleFileSelect(event) {
-                    this.filesToUpload = Array.from(event.target.files);
-                    this.previews = [];
-                    // Simple validation
-                    if (this.filesToUpload.some(file => !file.type.startsWith('image/'))) {
-                        alert('Please select only image files.');
-                        this.filesToUpload = [];
-                        return;
-                    }
-                    for (const file of this.filesToUpload) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            this.previews.push({ name: file.name, url: e.target.result });
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                },
-
-                fetchImages() {
-                    this.isLoading = true;
-                    fetch('/api/images')
-                        .then(response => response.json())
-                        .then(data => {
-                            this.galleryImages = data;
-                            this.isLoading = false;
-                        })
-                        .catch(error => {
-                            console.error('Error fetching images:', error);
-                            this.isLoading = false;
-                        });
-                },
-
-                uploadFiles() {
-                    if (this.filesToUpload.length === 0) return;
-                    this.isUploading = true;
-                    this.uploadProgress = 0;
-                    const initialImageCount = this.galleryImages.length;
-
-                    const formData = new FormData();
-                    this.filesToUpload.forEach(file => {
-                        formData.append('files', file);
-                    });
-
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', '/api/upload', true);
-
-                    xhr.upload.onprogress = (event) => {
-                        if (event.lengthComputable) {
-                            this.uploadProgress = Math.round((event.loaded / event.total) * 100);
-                        }
-                    };
-
-                    xhr.onload = () => {
-                        this.isUploading = false;
-                        this.previews = [];
-                        if (xhr.status === 200) {
-                            this.startPolling(initialImageCount);
-                        } else {
-                            console.error('Upload failed:', xhr.responseText);
-                            alert('An error occurred during upload. Please try again.');
-                        }
-                    };
-
-                    xhr.onerror = () => {
-                        this.isUploading = false;
-                        this.previews = [];
-                        console.error('Upload error:', xhr.statusText);
-                        alert('An error occurred during upload. Please try again.');
-                    };
-
-                    xhr.send(formData);
-                },
-
-                startPolling(initialImageCount) {
-                    let attempts = 0;
-                    const maxAttempts = 15;
-
-                    this.pollingInterval = setInterval(() => {
-                        fetch('/api/images')
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.length >= initialImageCount + this.filesToUpload.length) {
-                                    this.galleryImages = data;
-                                    clearInterval(this.pollingInterval);
-                                    this.filesToUpload = [];
-                                }
-                            });
-
-                        attempts++;
-                        if (attempts >= maxAttempts) {
-                            clearInterval(this.pollingInterval);
-                            this.fetchImages();
-                            this.filesToUpload = [];
-                        }
-                    }, 2000);
-                }
-            }
-        }
-    </script>
 </body>
 </html>
