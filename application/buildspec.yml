@@ -3,14 +3,12 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      # --- Log in to Docker Hub ---
       - echo "Logging in to Docker Hub..."
       - DOCKERHUB_CREDENTIALS=$(aws secretsmanager get-secret-value --secret-id docker-hub-credentials --query SecretString --output text)
       - DOCKERHUB_USERNAME=$(echo $DOCKERHUB_CREDENTIALS | jq -r .username)
       - DOCKERHUB_PASSWORD=$(echo $DOCKERHUB_CREDENTIALS | jq -r .password)
       - echo "Attempting to log in to Docker Hub with username: $DOCKERHUB_USERNAME"
       - echo "$DOCKERHUB_PASSWORD" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-      # --- End Docker Hub Login ---
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME
