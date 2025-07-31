@@ -59,7 +59,7 @@
         </header>
 
         <!-- Main Alpine.js Component -->
-        <main class="container mx-auto px-4 py-8" x-data="galleryApp">
+        <main class="container mx-auto px-4 py-8" x-data="galleryApp()">
             <div class="text-center mb-12">
                 <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">The Ultimate Cloud Image Toolkit</h2>
                 <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600 dark:text-gray-400">Upload, process, and transform your images with a powerful, serverless engine. Built on a highly available AWS architecture for unmatched performance and reliability.</p>
@@ -155,8 +155,8 @@
 
     <!-- CORRECTED JavaScript Logic -->
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('galleryApp', () => ({
+        function galleryApp() {
+            return {
                 filesToUpload: [],
                 previews: [],
                 uploadProgress: 0,
@@ -260,13 +260,13 @@
                         attempts++;
                         if (attempts >= maxAttempts) {
                             clearInterval(this.pollingInterval);
-                            this.fetchImages(); // Do one final fetch to be sure
+                            this.fetchImages();
                             this.filesToUpload = [];
                         }
                     }, 2000);
                 }
-            }));
-        });
+            }
+        }
     </script>
 </body>
 </html>
