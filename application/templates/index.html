@@ -270,23 +270,33 @@
             <div class="p-3 text-sm border-t border-white/10 space-y-1 relative" x-data="{ open: false }">
               <button @click="open = !open" class="w-full text-left text-gray-300 hover:text-white tracking-widest uppercase font-light bg-black border border-white/10 px-3 py-2 rounded">
                 <span class="flex justify-between items-center w-full">
-                  Actions
+                  Format
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
                 </span>
               </button>
               <div x-show="open" @click.away="open = false" x-transition class="absolute top-full left-0 w-full mt-1 bg-black border border-white/10 rounded z-10">
-                <button @click="downloadPDF(img.original_key)" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Download PDF</button>
-                <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=jpeg'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to JPEG</a>
-                <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=png'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to PNG</a>
-                <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=webp'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to WebP</a>
-                <a :href="'/metadata?key=' + encodeURIComponent(img.original_key)" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">View Metadata</a>
-                <a :href="'/resize?key=' + encodeURIComponent(img.original_key)" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Change Resolution</a>
-                <form :action="'/delete'" method="POST">
-                  <input type="hidden" name="key" :value="img.original_key" />
-                  <button type="submit" class="w-full text-left text-red-500 hover:text-red-700 px-3 py-2 text-xs">Delete</button>
-                </form>
+                <div class="border-b border-white/10">
+                  <p class="text-gray-400 text-xs px-3 pt-2 pb-1 uppercase">Image Format</p>
+                  <button @click="downloadPDF(img.original_key)" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Download PDF</button>
+                  <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=jpeg'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to JPEG</a>
+                  <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=png'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to PNG</a>
+                  <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=webp'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to WebP</a>
+                </div>
+                <div class="border-b border-white/10">
+                  <p class="text-gray-400 text-xs px-3 pt-2 pb-1 uppercase">Resolution</p>
+                  <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=800'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">800px Width</a>
+                  <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=1024'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">1024px Width</a>
+                  <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=1920'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">1920px Width</a>
+                </div>
+                <div>
+                  <a :href="'/metadata?key=' + encodeURIComponent(img.original_key)" target="_blank" class="block w-full text-left text-indigo-400 hover:text-indigo-300 px-3 py-2 text-xs">View Metadata</a>
+                  <form :action="'/delete'" method="POST">
+                    <input type="hidden" name="key" :value="img.original_key" />
+                    <button type="submit" class="w-full text-left text-red-500 hover:text-red-700 px-3 py-2 text-xs">Delete</button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
