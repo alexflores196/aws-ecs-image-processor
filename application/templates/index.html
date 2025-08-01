@@ -102,7 +102,7 @@
             <p class="truncate" x-text="img.original_key.split('/').pop()"></p>
 
             <div class="mt-3">
-              <label class="block text-xs text-gray-400 uppercase mb-1">Format</label>
+              <label class="block text-xs text-gray-400 uppercase mb-1 px-3">Format</label>
               <select @change="event => {
                 const format = event.target.value;
                 if (format === 'pdf') {
@@ -121,14 +121,24 @@
 
               <div>
                 <p class="text-xs text-gray-400 pt-2 px-3 uppercase">Resolution</p>
-                <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=800'" class="block text-white hover:bg-gray-700 px-3 py-1 text-xs">800px Width</a>
-                <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=1024'" class="block text-white hover:bg-gray-700 px-3 py-1 text-xs">1024px Width</a>
-                <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=1920'" class="block text-white hover:bg-gray-700 px-3 py-1 text-xs">1920px Width</a>
+                <div class="flex gap-2 px-3 py-1">
+                  <input type="number" min="1" placeholder="Width" x-model.number="img.resizeWidth" class="w-1/2 bg-black border border-white/20 rounded px-2 py-1 text-xs text-white" />
+                  <input type="number" min="1" placeholder="Height" x-model.number="img.resizeHeight" class="w-1/2 bg-black border border-white/20 rounded px-2 py-1 text-xs text-white" />
+                </div>
+                <button @click="window.open('/resize?key=' + encodeURIComponent(img.original_key) + '&width=' + (img.resizeWidth || '') + '&height=' + (img.resizeHeight || ''), '_blank')" class="mt-1 bg-white text-black px-3 py-1 rounded text-xs hover:bg-gray-300 transition mx-3">
+                  Resize
+                </button>
               </div>
 
               <div>
                 <p class="text-xs text-gray-400 pt-2 px-3 uppercase">Metadata</p>
-                <a :href="'/metadata?key=' + encodeURIComponent(img.original_key)" class="block text-indigo-400 hover:text-indigo-300 px-3 py-1 text-xs">View Metadata</a>
+                <div class="px-3 py-1 text-xs text-indigo-400 space-y-1" x-data="{ basic: img.metadata?.basic || 'N/A', enhanced: img.metadata?.enhanced || 'N/A' }">
+                  <div><strong>Basic:</strong> <span x-text="basic"></span></div>
+                  <div><strong>Enhanced:</strong> <span x-text="enhanced"></span></div>
+                </div>
+                <a :href="img.original_url" target="_blank" class="block bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded text-xs mt-1 text-center">
+                  Download
+                </a>
                 <form :action="'/delete'" method="POST" class="px-3 pt-1 pb-2">
                   <input type="hidden" name="key" :value="img.original_key" />
                   <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
