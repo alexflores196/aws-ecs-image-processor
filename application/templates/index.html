@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" x-data="galleryApp" x-init="init()" x-cloak>
+<html lang="en" x-data="galleryApp" x-cloak>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Workspace</title>
+  <title>Image Studio Pro</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
@@ -56,28 +56,75 @@
         isLoading: false,
         uploadProgress: 0,
         isUploading: false,
+        hasLoadedOnce: false,
+        darkMode: false,
 
         init() {
+          console.log('Initializing gallery app');
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+            this.darkMode = true;
+          } else {
+            document.documentElement.classList.remove('dark');
+            this.darkMode = false;
+          }
+
+          this.isLoading = true;
           this.fetchImages();
-          setInterval(() => this.fetchImages(), 3000);
+          this.pollInterval = setInterval(() => {
+            this.fetchImages(false);
+          }, 3000);
         },
 
-        fetchImages() {
-          this.isLoading = true;
+        toggleDarkMode() {
+          this.darkMode = !this.darkMode;
+          if (this.darkMode) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+          }
+        },
+
+        fetchImages(showLoader = true) {
+          if (showLoader && !this.hasLoadedOnce) this.isLoading = true;
           fetch('/api/images')
-            .then(res => res.json())
+            .then(res => {
+              if (!res.ok) throw new Error('API response not OK');
+              return res.json();
+            })
             .then(data => {
-              this.galleryImages = data;
+              const newKeys = data.map(img => img.original_key).sort().join(',');
+              const currentKeys = this.galleryImages.map(img => img.original_key).sort().join(',');
+
+              if (newKeys !== currentKeys) {
+                this.galleryImages = data;
+              }
+
+              this.hasLoadedOnce = true;
+              this.isLoading = false;
+            })
+            .catch(err => {
+              console.error('Error fetching images:', err);
               this.isLoading = false;
             });
         },
 
         handleFileSelect(e) {
+          console.log('Files selected');
           if(e.dataTransfer) {
             this.filesToUpload = Array.from(e.dataTransfer.files);
           } else {
             this.filesToUpload = Array.from(e.target.files);
           }
+          const validImages = this.filesToUpload.filter(file => file.type.startsWith('image/'));
+          if (validImages.length !== this.filesToUpload.length) {
+            alert('Some files were not valid images and will be ignored.');
+          }
+          this.filesToUpload = validImages;
+          console.log('Files to upload:', this.filesToUpload);
           this.previews = [];
           for (const file of this.filesToUpload) {
             const reader = new FileReader();
@@ -88,6 +135,7 @@
 
         uploadFiles() {
           if (!this.filesToUpload.length) return;
+          console.log('Uploading files...');
           this.isUploading = true;
           const formData = new FormData();
           this.filesToUpload.forEach(f => formData.append('files', f));
@@ -95,9 +143,14 @@
             method: 'POST',
             body: formData
           }).then(() => {
+            console.log('Upload complete');
             this.fetchImages();
             this.filesToUpload = [];
             this.previews = [];
+            this.isUploading = false;
+          }).catch(err => {
+            alert('Upload failed. Please try again.');
+            console.error('Upload error:', err);
             this.isUploading = false;
           });
         },
@@ -110,18 +163,31 @@
   </script>
 </head>
 
-<body class="dark:bg-black dark:text-white bg-white text-black min-h-screen transition-colors duration-300">
-  <header class="container mx-auto px-6 py-8 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-    <h1 class="text-4xl font-bold">Image Workspace</h1>
-    <button @click="$root.classList.toggle('dark')" class="text-sm px-3 py-1 border border-gray-400 rounded transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
-      Toggle Theme
-    </button>
-  </header>
+<body x-data="galleryApp" x-init="init()" class="bg-black text-white min-h-screen transition-colors duration-300 relative font-light">
+  <nav class="fixed top-4 right-6 z-50 flex items-center space-x-6 text-white font-light tracking-widest uppercase text-sm">
+    <a href="#upload" class="hover:text-indigo-400 transition-colors duration-300">Upload</a>
+    <a href="#gallery" class="hover:text-indigo-400 transition-colors duration-300">Gallery</a>
+    <button @click="toggleDarkMode" class="p-1 rounded hover:bg-gray-700 transition-colors duration-300" aria-label="Toggle Dark Mode" type="button" x-html="darkMode ? `
+      <svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 3v1m0 16v1m8.66-10h-1M4.34 12h-1m15.364 4.364l-.707-.707M6.343 6.343l-.707-.707m12.02 12.02l-.707-.707M6.343 17.657l-.707-.707M12 7a5 5 0 100 10 5 5 0 000-10z' />
+      </svg>
+    ` : `
+      <svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z' />
+      </svg>
+    `"></button>
+  </nav>
 
-  <main class="container mx-auto px-6 pb-16">
-    <section class="mb-10 border-b border-gray-200 dark:border-gray-700 pb-6">
+  <section class="h-screen flex flex-col justify-center items-center text-center px-6">
+    <h1 class="text-6xl font-light tracking-widest uppercase mb-4">Image Studio Pro</h1>
+    <p class="text-xl font-light tracking-widest uppercase max-w-xl text-gray-400">Precision Meets Simplicity</p>
+  </section>
+
+  <main class="container mx-auto px-6 pb-16 relative z-10">
+    <section id="upload" class="mb-10 border-b border-gray-200 border-gray-700 pb-6">
+      <p class="text-center text-sm uppercase font-light tracking-widest text-white mb-6">Upload Your Visual Assets</p>
       <div
-        class="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+        class="w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition backdrop-blur-sm bg-white/10 border-white/10"
         @dragover.prevent
         @drop.prevent="handleFileSelect($event)"
         @click="$refs.fileInput.click()"
@@ -129,66 +195,74 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-10 w-10 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16v-4m0 0V8m0 4h10m-4 0v4m0-4V8m0 4h4" />
         </svg>
-        <p class="text-sm text-gray-600 dark:text-gray-400">Drag and drop images here or <span class="text-indigo-600 dark:text-indigo-400 underline">click to browse</span></p>
+        <p class="text-sm text-gray-400">Drag and drop images here or <span class="text-indigo-400 underline">click to browse</span></p>
         <input type="file" multiple accept="image/*" @change="handleFileSelect" class="hidden" x-ref="fileInput" />
       </div>
 
-      <div class="flex flex-wrap gap-4 mt-6" x-show="previews.length">
+      <div class="flex flex-wrap gap-4 mt-6" x-show="previews.length" x-cloak>
         <template x-for="preview in previews" :key="preview.name">
-          <div class="w-32 h-32 border border-gray-300 dark:border-gray-600 rounded overflow-hidden relative">
+          <div class="w-32 h-32 border rounded overflow-hidden relative border-white/10">
             <img :src="preview.url" alt="" class="w-full h-full object-cover" />
             <div class="absolute bottom-0 left-0 w-full text-xs text-white bg-black bg-opacity-60 px-1 py-0.5 truncate" x-text="preview.name"></div>
           </div>
         </template>
       </div>
 
-      <div class="flex gap-4 mt-4" x-show="previews.length">
+      <div class="flex gap-4 mt-4" x-show="previews.length" x-cloak>
         <button @click="uploadFiles" class="bg-black text-white px-5 py-2 rounded transition-colors duration-300 hover:bg-gray-800">
           <template x-if="isUploading">
-            <span>Uploading...</span>
+            <span class="flex items-center gap-2">
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"></circle>
+                <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Uploading...
+            </span>
           </template>
           <template x-if="!isUploading">
             <span>Upload</span>
           </template>
         </button>
-        <button @click="filesToUpload = []; previews = []" class="px-5 py-2 border border-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+        <button @click="filesToUpload = []; previews = []" class="px-5 py-2 border border-white/20 rounded hover:bg-gray-100 hover:bg-gray-800 transition-colors duration-300">
           Clear Files
         </button>
       </div>
     </section>
 
-    <div x-show="galleryImages.length > 1" class="mb-6">
+    <div x-show="galleryImages.length > 1" x-cloak class="mb-6">
       <form action="/clear" method="POST">
-        <button type="submit" class="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700">
+        <button type="submit" class="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700 transition-colors duration-300">
           Clear Gallery
         </button>
       </form>
     </div>
 
-    <section>
-      <template x-if="isLoading">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+    <section id="gallery" class="relative">
+      <h2 class="absolute -left-16 top-1/2 transform -translate-y-1/2 text-white/10 text-8xl font-light tracking-widest uppercase select-none pointer-events-none user-select-none" aria-hidden="true" style="writing-mode: vertical-rl; letter-spacing: 0.25em;">Studio</h2>
+
+      <template x-if="isLoading && !hasLoadedOnce">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6" x-cloak>
           <template x-for="i in 8">
-            <div class="w-full aspect-square bg-gray-100 dark:bg-gray-800 animate-pulse rounded"></div>
+            <div class="w-full aspect-square bg-gray-100 bg-gray-800 animate-pulse rounded"></div>
           </template>
         </div>
       </template>
 
       <template x-if="!isLoading && galleryImages.length === 0">
-        <p class="text-gray-500 dark:text-gray-400 text-center mt-12">No images yet. Upload to get started.</p>
+        <p class="text-gray-400 text-center mt-12 uppercase tracking-widest font-light" x-cloak>No images yet. Upload to get started.</p>
       </template>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-6" x-show="!isLoading && galleryImages.length > 0">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 transition-opacity duration-700 ease-in-out" x-show="!isLoading && galleryImages.length > 0" x-cloak>
         <template x-for="img in galleryImages" :key="img.original_key">
-          <div class="rounded overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer transition-shadow duration-300 hover:shadow-lg aspect-square flex flex-col">
-            <img :src="img.thumbnail_url" alt="" class="w-full h-full object-cover flex-grow" />
-            <div class="p-3 text-sm border-t border-gray-200 dark:border-gray-700">
-              <button @click="downloadPDF(img.original_key)" class="text-black dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition-colors duration-200">
+          <div class="rounded overflow-hidden border cursor-pointer transition-shadow duration-300 hover:shadow-lg aspect-square flex flex-col border-white/10 transition-opacity duration-700 ease-in-out">
+            <img :src="img.thumbnail_url" :alt="img.original_key" class="w-full h-full object-cover flex-grow" />
+            <div class="p-3 text-sm border-t border-white/10">
+              <button @click="downloadPDF(img.original_key)" class="text-gray-300 hover:text-white transition-colors duration-200 tracking-widest uppercase font-light">
                 Download PDF
               </button>
               <form :action="'/delete'" method="POST" class="mt-2">
                 <input type="hidden" name="key" :value="img.original_key" />
-                <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                <button type="submit" class="text-red-500 hover:text-red-700 text-xs tracking-widest uppercase font-light">Delete</button>
               </form>
             </div>
           </div>
@@ -197,8 +271,8 @@
     </section>
   </main>
 
-  <footer class="border-t border-gray-200 dark:border-gray-700 mt-12 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-    &copy; 2025 Image Workspace. Developed by Alex Flores.
+  <footer class="border-t border-gray-200 border-gray-700 mt-12 py-6 text-center text-sm text-gray-400 tracking-widest uppercase font-light">
+    &copy; 2025 Image Studio Pro. Built by Alex Flores.
   </footer>
 </body>
 </html>

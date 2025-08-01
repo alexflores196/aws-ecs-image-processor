@@ -47,8 +47,8 @@ def index():
                         'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
                         'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
                         'original_key': full_original_key,
-                        'basic_metadata': item_data.get('BasicMetadata', {}),
-                        'enhanced_metadata': item_data.get('EnhancedMetadata', {})
+                        'basic_metadata': item_data.get('BasicMetadata') or {},
+                        'enhanced_metadata': item_data.get('EnhancedMetadata') or {}
                     })
     except Exception as e:
         print(f"Error retrieving data: {e}")
@@ -104,8 +104,8 @@ def api_images():
                         'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
                         'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
                         'original_key': full_original_key,
-                        'basic_metadata': item_data.get('BasicMetadata', {}),
-                        'enhanced_metadata': item_data.get('EnhancedMetadata', {})
+                        'basic_metadata': item_data.get('BasicMetadata') or {},
+                        'enhanced_metadata': item_data.get('EnhancedMetadata') or {}
                     })
 
     except Exception as e:
@@ -158,7 +158,7 @@ def convert():
         if width and height:
             img = img.resize((width, height), Image.Resampling.LANCZOS)
 
-        if img.mode == 'RGBA' and target_format == 'jpg':
+        if img.mode == 'RGBA' and target_format in ['jpg', 'jpeg']:
             img = img.convert('RGB')
 
         buffer = io.BytesIO()
