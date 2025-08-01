@@ -1,107 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" x-data="galleryApp" x-init="init()" x-cloak>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Workspace | Cloud Image Processor</title>
+  <title>Image Workspace</title>
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Alpine.js for dark mode toggle and gallery features -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-  <script>
-    document.addEventListener('alpine:init', () => {
-      Alpine.data('galleryApp', () => ({
-        filesToUpload: [],
-        previews: [],
-        uploadProgress: 0,
-        isUploading: false,
-        galleryImages: [],
-        isLoading: false,
-        pollingInterval: null,
-
-        init() {
-          this.isLoading = true;
-          this.fetchImages();
-          this.pollingInterval = setInterval(() => {
-            this.fetchImages();
-          }, 3000);
-        },
-
-        fetchImages() {
-          fetch('/api/images')
-            .then(response => response.json())
-            .then(data => {
-              this.galleryImages = data;
-              this.isLoading = false;
-            })
-            .catch(err => {
-              console.error('Failed to fetch images:', err);
-              this.isLoading = false;
-            });
-        },
-
-        handleFileSelect(event) {
-          this.filesToUpload = Array.from(event.target.files);
-          this.previews = [];
-          if (this.filesToUpload.some(file => !file.type.startsWith('image/'))) {
-            alert('Please select only image files.');
-            this.filesToUpload = [];
-            return;
-          }
-          for (const file of this.filesToUpload) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              this.previews.push({ name: file.name, url: e.target.result });
-            };
-            reader.readAsDataURL(file);
-          }
-        },
-
-        uploadFiles() {
-          if (this.filesToUpload.length === 0) return;
-          const formData = new FormData();
-          this.filesToUpload.forEach(file => formData.append('files', file));
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', '/upload', true);
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-              this.uploadProgress = Math.round((e.loaded / e.total) * 100);
-            }
-          };
-          xhr.onload = () => {
-            if (xhr.status === 200) {
-              this.fetchImages();
-              this.filesToUpload = [];
-              this.previews = [];
-              this.uploadProgress = 0;
-              this.isUploading = false;
-            }
-          };
-          xhr.onerror = () => {
-            alert('Upload failed.');
-          };
-          this.isUploading = true;
-          xhr.send(formData);
-        }
-      }));
-    });
-  </script>
-
-  <!-- Google Fonts: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    [x-cloak] { display: none !important; }
+  </style>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
           animation: {
             shimmer: 'shimmer 1.5s infinite linear',
           },
@@ -113,36 +29,113 @@
           },
         }
       }
-    }
+    };
   </script>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    [x-cloak] { display: none !important; }
-  </style>
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('galleryApp', () => ({
+        filesToUpload: [],
+        previews: [],
+        galleryImages: [],
+        isLoading: false,
+        uploadProgress: 0,
+        isUploading: false,
+
+        init() {
+          this.fetchImages();
+          setInterval(() => this.fetchImages(), 3000);
+        },
+
+        fetchImages() {
+          this.isLoading = true;
+          fetch('/api/images')
+            .then(res => res.json())
+            .then(data => {
+              this.galleryImages = data;
+              this.isLoading = false;
+            });
+        },
+
+        handleFileSelect(e) {
+          this.filesToUpload = Array.from(e.target.files);
+          this.previews = [];
+          for (const file of this.filesToUpload) {
+            const reader = new FileReader();
+            reader.onload = e => this.previews.push({ name: file.name, url: e.target.result });
+            reader.readAsDataURL(file);
+          }
+        },
+
+        uploadFiles() {
+          if (!this.filesToUpload.length) return;
+          const formData = new FormData();
+          this.filesToUpload.forEach(f => formData.append('files', f));
+          fetch('/upload', {
+            method: 'POST',
+            body: formData
+          }).then(() => {
+            this.fetchImages();
+            this.filesToUpload = [];
+            this.previews = [];
+          });
+        },
+
+        downloadPDF(key) {
+          window.open(`/convert?key=${encodeURIComponent(key)}&format=pdf`, '_blank');
+        }
+      }));
+    });
+  </script>
 </head>
-<body x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" :class="{ 'dark': darkMode }">
 
-  <div class="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
-    <header class="container mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <svg class="w-8 h-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.562L16.5 21.75l-.398-1.188a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.188-.398a2.25 2.25 0 001.423-1.423L16.5 15.75l.398 1.188a2.25 2.25 0 001.423 1.423L19.5 18.75l-1.188.398a2.25 2.25 0 00-1.423 1.423z" /></svg>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Image Workspace</h1>
-      </div>
-      <button @click="darkMode = !darkMode" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-        <svg x-show="!darkMode" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-        <svg x-show="darkMode" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+<body class="dark:bg-black dark:text-white bg-white text-black min-h-screen transition-colors duration-300">
+  <header class="container mx-auto px-6 py-6 flex justify-between items-center">
+    <h1 class="text-2xl font-semibold">Image Workspace</h1>
+    <button @click="$root.classList.toggle('dark')" class="text-sm">Toggle Theme</button>
+  </header>
+
+  <main class="container mx-auto px-6 pb-12">
+    <section class="mb-8">
+      <input type="file" multiple @change="handleFileSelect" class="mb-2" />
+      <button @click="uploadFiles" class="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">
+        Upload
       </button>
-    </header>
 
-    <!-- (Rest of your template remains the same...) -->
-    <!-- Only the top branding, dark toggle, and upload code changed for this revision -->
-
-    <footer class="mt-16 py-8 border-t border-gray-200 dark:border-gray-800">
-      <div class="container mx-auto px-4 text-center text-gray-500 dark:text-gray-400">
-        <p>&copy; 2025 Image Workspace. An AWS Capstone Project.</p>
-        <p class="text-sm">Developed by Alex Flores.</p>
+      <div class="flex flex-wrap gap-4 mt-4" x-show="previews.length">
+        <template x-for="preview in previews" :key="preview.name">
+          <img :src="preview.url" class="w-32 h-32 object-cover rounded border" />
+        </template>
       </div>
-    </footer>
-  </div>
+    </section>
+
+    <section>
+      <template x-if="isLoading">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <template x-for="i in 8">
+            <div class="w-full h-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
+          </template>
+        </div>
+      </template>
+
+      <template x-if="!isLoading && galleryImages.length === 0">
+        <p class="text-gray-500 text-center mt-8">No images yet. Upload to get started.</p>
+      </template>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4" x-show="!isLoading && galleryImages.length > 0">
+        <template x-for="img in galleryImages" :key="img.original_key">
+          <div class="rounded overflow-hidden border dark:border-gray-700">
+            <img :src="img.thumbnail_url" class="w-full h-40 object-cover" />
+            <div class="p-2 text-sm space-y-1">
+              <button @click="downloadPDF(img.original_key)" class="text-indigo-600 hover:underline">Download PDF</button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+    &copy; 2025 Image Workspace. Developed by Alex Flores.
+  </footer>
 </body>
 </html>
