@@ -4,12 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Image Studio Pro</title>
-
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
     [x-cloak] { display: none !important; }
   </style>
   <script>
@@ -17,32 +14,13 @@
       darkMode: 'class',
       theme: {
         extend: {
-          colors: {
-            black: '#000000',
-            white: '#ffffff',
-            gray: {
-              50: '#f9f9f9',
-              100: '#f0f0f0',
-              200: '#d9d9d9',
-              300: '#bfbfbf',
-              400: '#a6a6a6',
-              500: '#8c8c8c',
-              600: '#737373',
-              700: '#595959',
-              800: '#404040',
-              900: '#262626',
-            }
-          },
           fontFamily: { sans: ['Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'] },
-          animation: {
-            shimmer: 'shimmer 1.5s infinite linear',
-          },
-          keyframes: {
-            shimmer: {
-              '0%': { transform: 'translateX(-100%)' },
-              '100%': { transform: 'translateX(100%)' },
+          colors: {
+            gray: {
+              800: '#1f1f1f',
+              900: '#0f0f0f'
             }
-          },
+          }
         }
       }
     };
@@ -50,113 +28,42 @@
   <script>
     document.addEventListener('alpine:init', () => {
       Alpine.data('galleryApp', () => ({
+        darkMode: true,
+        galleryImages: [],
         filesToUpload: [],
         previews: [],
-        galleryImages: [],
-        isLoading: false,
-        uploadProgress: 0,
         isUploading: false,
-        hasLoadedOnce: false,
-        darkMode: false,
-
         init() {
-          console.log('Initializing gallery app');
-          const savedTheme = localStorage.getItem('theme');
-          if (savedTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-            this.darkMode = true;
-          } else {
-            document.documentElement.classList.remove('dark');
-            this.darkMode = false;
-          }
-
-          this.isLoading = true;
+          document.documentElement.classList.add('dark');
           this.fetchImages();
-          this.pollInterval = setInterval(() => {
-            this.fetchImages(false);
-          }, 3000);
+          setInterval(() => this.fetchImages(), 3000);
         },
-
-        toggleDarkMode() {
-          this.darkMode = !this.darkMode;
-          if (this.darkMode) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-          }
-        },
-
-        fetchImages(showLoader = true) {
-          if (showLoader && !this.hasLoadedOnce) this.isLoading = true;
+        fetchImages() {
           fetch('/api/images')
-            .then(res => {
-              if (!res.ok) throw new Error('API response not OK');
-              return res.json();
-            })
-            .then(data => {
-              const newKeys = data.map(img => img.original_key).sort().join(',');
-              const currentKeys = this.galleryImages.map(img => img.original_key).sort().join(',');
-
-              if (newKeys !== currentKeys) {
-                this.galleryImages = data;
-              }
-
-              this.hasLoadedOnce = true;
-              this.isLoading = false;
-            })
-            .catch(err => {
-              console.error('Error fetching images:', err);
-              this.isLoading = false;
-            });
+            .then(res => res.json())
+            .then(data => this.galleryImages = data);
         },
-
         handleFileSelect(e) {
-          console.log('Files selected');
-          if(e.dataTransfer) {
-            this.filesToUpload = Array.from(e.dataTransfer.files);
-          } else {
-            this.filesToUpload = Array.from(e.target.files);
-          }
-          const validImages = this.filesToUpload.filter(file => file.type.startsWith('image/'));
-          if (validImages.length !== this.filesToUpload.length) {
-            alert('Some files were not valid images and will be ignored.');
-          }
-          this.filesToUpload = validImages;
-          console.log('Files to upload:', this.filesToUpload);
+          this.filesToUpload = Array.from(e.target.files);
           this.previews = [];
-          for (const file of this.filesToUpload) {
+          for (let file of this.filesToUpload) {
             const reader = new FileReader();
             reader.onload = e => this.previews.push({ name: file.name, url: e.target.result });
             reader.readAsDataURL(file);
           }
         },
-
         uploadFiles() {
-          if (!this.filesToUpload.length) return;
-          console.log('Uploading files...');
-          this.isUploading = true;
           const formData = new FormData();
           this.filesToUpload.forEach(f => formData.append('files', f));
-          fetch('/upload', {
-            method: 'POST',
-            body: formData
-          }).then(() => {
-            console.log('Upload complete');
-            this.fetchImages();
-            this.filesToUpload = [];
-            this.previews = [];
-            this.isUploading = false;
-            window.dispatchEvent(new CustomEvent('toast', { detail: 'Upload successful!' }));
-          }).catch(err => {
-            alert('Upload failed. Please try again.');
-            console.error('Upload error:', err);
-            window.dispatchEvent(new CustomEvent('toast', { detail: 'Upload failed. Please try again.' }));
-            this.isUploading = false;
-          });
+          this.isUploading = true;
+          fetch('/upload', { method: 'POST', body: formData })
+            .then(() => {
+              this.isUploading = false;
+              this.fetchImages();
+              this.filesToUpload = [];
+              this.previews = [];
+            });
         },
-
         downloadPDF(key) {
           window.open(`/convert?key=${encodeURIComponent(key)}&format=pdf`, '_blank');
         }
@@ -164,161 +71,74 @@
     });
   </script>
 </head>
+<body class="bg-black text-white font-sans min-h-screen" x-init="init()">
+  <header class="text-center py-6">
+    <h1 class="text-2xl font-semibold uppercase tracking-widest">Image Studio Pro</h1>
+    <p class="text-gray-400 tracking-wide text-sm uppercase">Upload. Enhance. Export.</p>
+  </header>
 
-<body x-data="galleryApp" x-init="init()" class="bg-black text-white min-h-screen transition-colors duration-300 relative font-light">
-  <nav class="fixed top-4 right-6 z-50 flex items-center space-x-6 text-white font-light tracking-widest uppercase text-sm">
-    <div x-data="{ open: false }" class="relative">
-      <button @click="open = !open" class="p-2 rounded hover:bg-gray-700 transition-colors duration-300" aria-label="Menu">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded shadow-lg z-50 text-left">
-        <a href="https://www.alexflores.cloud" class="block px-4 py-2 text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Home</a>
-        <a href="https://www.alexflores.cloud/about" class="block px-4 py-2 text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">About Me</a>
+  <main class="max-w-5xl mx-auto px-4">
+    <section class="mb-10 text-center">
+      <input type="file" multiple accept="image/*" class="hidden" id="fileInput" @change="handleFileSelect" x-ref="fileInput" />
+      <div class="border-2 border-dashed border-white/20 p-10 rounded cursor-pointer" @click="$refs.fileInput.click()">
+        <p class="text-gray-400">Click or drag images here to upload</p>
       </div>
-    </div>
-    <button @click="toggleDarkMode" class="p-1 rounded hover:bg-gray-700 transition-colors duration-300" aria-label="Toggle Dark Mode" type="button" x-html="darkMode ? `
-      <svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 3v1m0 16v1m8.66-10h-1M4.34 12h-1m15.364 4.364l-.707-.707M6.343 6.343l-.707-.707m12.02 12.02l-.707-.707M6.343 17.657l-.707-.707M12 7a5 5 0 100 10 5 5 0 000-10z' />
-      </svg>
-    ` : `
-      <svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z' />
-      </svg>
-    `"></button>
-  </nav>
-
-  <section class="py-8 flex flex-col justify-center items-center text-center px-6">
-    <h2 class="text-xl sm:text-2xl font-light mb-4 tracking-widest uppercase">Image Studio Pro</h2>
-    <p class="text-xl font-light tracking-widest uppercase max-w-xl text-gray-400">Upload. Enhance. Export.</p>
-  </section>
-
-  <main class="container mx-auto px-6 pb-8 relative z-10">
-    <section id="upload" class="mb-6 border-b border-gray-200 border-gray-700 pb-6">
-      <p class="text-center text-sm uppercase font-light tracking-widest text-white mb-6">Upload Your Visual Assets</p>
-      <div
-        class="w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition backdrop-blur-sm bg-white/10 border-white/10"
-        @dragover.prevent
-        @drop.prevent="handleFileSelect($event)"
-        @click="$refs.fileInput.click()"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-10 w-10 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16v-4m0 0V8m0 4h10m-4 0v4m0-4V8m0 4h4" />
-        </svg>
-        <p class="text-sm text-gray-400">Drag and drop images here or <span class="text-indigo-400 underline">click to browse</span></p>
-        <input type="file" multiple accept="image/*" @change="handleFileSelect" class="hidden" x-ref="fileInput" />
-      </div>
-
-      <div class="flex flex-wrap gap-4 mt-6" x-show="previews.length" x-cloak>
+      <div class="mt-4 flex flex-wrap justify-center gap-4" x-show="previews.length" x-cloak>
         <template x-for="preview in previews" :key="preview.name">
-          <div class="w-32 h-32 border rounded overflow-hidden relative border-white/10">
-            <img :src="preview.url" alt="" class="w-full h-full object-cover" />
-            <div class="absolute bottom-0 left-0 w-full text-xs text-white bg-black bg-opacity-60 px-1 py-0.5 truncate" x-text="preview.name"></div>
-          </div>
+          <img :src="preview.url" class="h-24 rounded border border-white/20" />
         </template>
       </div>
-
-      <div class="flex gap-4 mt-4" x-show="previews.length" x-cloak>
-        <button @click="uploadFiles" class="bg-black text-white px-5 py-2 rounded transition-colors duration-300 hover:bg-gray-800">
-          <template x-if="isUploading">
-            <span class="flex items-center gap-2">
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"></circle>
-                <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-              </svg>
-              Uploading...
-            </span>
-          </template>
-          <template x-if="!isUploading">
-            <span>Upload</span>
-          </template>
-        </button>
-        <button @click="filesToUpload = []; previews = []" class="px-5 py-2 border border-white/20 rounded hover:bg-gray-100 hover:bg-gray-800 transition-colors duration-300">
-          Clear Files
-        </button>
-      </div>
+      <button @click="uploadFiles" x-show="previews.length" class="mt-4 bg-white text-black px-4 py-2 rounded hover:bg-gray-300 transition" x-cloak>
+        <span x-show="!isUploading">Upload</span>
+        <span x-show="isUploading">Uploading...</span>
+      </button>
     </section>
 
-    <div x-show="galleryImages.length > 1" x-cloak class="mb-6">
-      <form action="/clear" method="POST">
-        <button type="submit" class="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700 transition-colors duration-300">
-          Clear Gallery
-        </button>
-      </form>
-    </div>
+    <section x-show="galleryImages.length" x-cloak class="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <template x-for="img in galleryImages" :key="img.original_key">
+        <div class="bg-gray-800 rounded overflow-hidden shadow text-sm">
+          <img :src="img.thumbnail_url" class="w-full h-40 object-cover" />
+          <div class="p-3">
+            <p class="truncate" x-text="img.original_key.split('/').pop()"></p>
 
-    <section id="gallery" class="relative">
+            <div class="mt-3">
+              <label class="block text-xs text-gray-400 uppercase mb-1">Format</label>
+              <select @change="event => {
+                const format = event.target.value;
+                if (format === 'pdf') {
+                  downloadPDF(img.original_key);
+                } else {
+                  window.open('/convert?key=' + encodeURIComponent(img.original_key) + '&format=' + format, '_blank');
+                }
+              }" class="w-full bg-black border border-white/20 rounded px-3 py-2 text-sm text-white">
+                <option value="">Select Format</option>
+                <option value="pdf">Download PDF</option>
+                <option value="jpeg">Convert to JPEG</option>
+                <option value="png">Convert to PNG</option>
+                <option value="webp">Convert to WebP</option>
+              </select>
+            </div>
 
-      <template x-if="isLoading && !hasLoadedOnce">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6" x-cloak>
-          <template x-for="i in 8">
-            <div class="w-full aspect-square bg-gray-100 bg-gray-800 animate-pulse rounded"></div>
-          </template>
-        </div>
-      </template>
+              <div>
+                <p class="text-xs text-gray-400 pt-2 px-3 uppercase">Resolution</p>
+                <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=800'" class="block text-white hover:bg-gray-700 px-3 py-1 text-xs">800px Width</a>
+                <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=1024'" class="block text-white hover:bg-gray-700 px-3 py-1 text-xs">1024px Width</a>
+                <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=1920'" class="block text-white hover:bg-gray-700 px-3 py-1 text-xs">1920px Width</a>
+              </div>
 
-      <template x-if="!isLoading && galleryImages.length === 0">
-        <p class="text-gray-400 text-center mt-6 uppercase tracking-widest font-light" x-cloak>No images yet. Upload to get started.</p>
-      </template>
-
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 transition-opacity duration-700 ease-in-out" x-show="!isLoading && galleryImages.length > 0" x-cloak>
-        <template x-for="img in galleryImages" :key="img.original_key">
-          <div class="rounded overflow-hidden border cursor-pointer transition-shadow duration-300 hover:shadow-lg aspect-square flex flex-col border-white/10 transition-opacity duration-700 ease-in-out">
-            <img :src="img.thumbnail_url" :alt="img.original_key" class="w-full h-full object-cover flex-grow" />
-            <p class="px-3 pt-2 text-xs text-gray-400 truncate" x-text="img.original_key.split('/').pop()"></p>
-            <div class="p-3 text-sm border-t border-white/10 space-y-1 relative" x-data="{ open: false }">
-              <button @click="open = !open" class="w-full text-left text-gray-300 hover:text-white tracking-widest uppercase font-light bg-black border border-white/10 px-3 py-2 rounded">
-                <span class="flex justify-between items-center w-full">
-                  Format
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
-              </button>
-              <div x-show="open" @click.away="open = false" x-transition class="absolute top-full left-0 w-full mt-1 bg-black border border-white/10 rounded z-10">
-                <div class="border-b border-white/10">
-                  <p class="text-gray-400 text-xs px-3 pt-2 pb-1 uppercase">Image Format</p>
-                  <button @click="downloadPDF(img.original_key)" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Download PDF</button>
-                  <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=jpeg'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to JPEG</a>
-                  <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=png'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to PNG</a>
-                  <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=webp'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to WebP</a>
-                </div>
-                <div class="border-b border-white/10">
-                  <p class="text-gray-400 text-xs px-3 pt-2 pb-1 uppercase">Resolution</p>
-                  <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=800'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">800px Width</a>
-                  <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=1024'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">1024px Width</a>
-                  <a :href="'/resize?key=' + encodeURIComponent(img.original_key) + '&width=1920'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">1920px Width</a>
-                </div>
-                <div>
-                  <a :href="'/metadata?key=' + encodeURIComponent(img.original_key)" target="_blank" class="block w-full text-left text-indigo-400 hover:text-indigo-300 px-3 py-2 text-xs">View Metadata</a>
-                  <form :action="'/delete'" method="POST">
-                    <input type="hidden" name="key" :value="img.original_key" />
-                    <button type="submit" class="w-full text-left text-red-500 hover:text-red-700 px-3 py-2 text-xs">Delete</button>
-                  </form>
-                </div>
+              <div>
+                <p class="text-xs text-gray-400 pt-2 px-3 uppercase">Metadata</p>
+                <a :href="'/metadata?key=' + encodeURIComponent(img.original_key)" class="block text-indigo-400 hover:text-indigo-300 px-3 py-1 text-xs">View Metadata</a>
+                <form :action="'/delete'" method="POST" class="px-3 pt-1 pb-2">
+                  <input type="hidden" name="key" :value="img.original_key" />
+                  <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                </form>
               </div>
             </div>
           </div>
-        </template>
-      </div>
+        </div>
+      </template>
     </section>
   </main>
-
-  <footer class="border-t border-gray-200 border-gray-700 mt-6 py-6 text-center text-sm text-gray-400 tracking-widest uppercase font-light">
-    &copy; 2025 Image Studio Pro. Built by Alex Flores.
-  </footer>
-
-  <div x-data="{ show: false, message: '' }" x-show="show" x-transition
-       class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 text-black dark:text-white text-sm px-4 py-2 rounded shadow z-50"
-       x-init="
-         document.addEventListener('toast', e => {
-           message = e.detail;
-           show = true;
-           setTimeout(() => show = false, 3000);
-         });
-       "
-       x-text="message">
-  </div>
 </body>
 </html>
