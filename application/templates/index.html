@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: 'Inter', sans-serif; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
     [x-cloak] { display: none !important; }
   </style>
   <script>
@@ -17,7 +17,23 @@
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            black: '#000000',
+            white: '#ffffff',
+            gray: {
+              50: '#f9f9f9',
+              100: '#f0f0f0',
+              200: '#d9d9d9',
+              300: '#bfbfbf',
+              400: '#a6a6a6',
+              500: '#8c8c8c',
+              600: '#737373',
+              700: '#595959',
+              800: '#404040',
+              900: '#262626',
+            }
+          },
+          fontFamily: { sans: ['Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'] },
           animation: {
             shimmer: 'shimmer 1.5s infinite linear',
           },
@@ -57,7 +73,11 @@
         },
 
         handleFileSelect(e) {
-          this.filesToUpload = Array.from(e.target.files);
+          if(e.dataTransfer) {
+            this.filesToUpload = Array.from(e.dataTransfer.files);
+          } else {
+            this.filesToUpload = Array.from(e.target.files);
+          }
           this.previews = [];
           for (const file of this.filesToUpload) {
             const reader = new FileReader();
@@ -68,6 +88,7 @@
 
         uploadFiles() {
           if (!this.filesToUpload.length) return;
+          this.isUploading = true;
           const formData = new FormData();
           this.filesToUpload.forEach(f => formData.append('files', f));
           fetch('/upload', {
@@ -77,6 +98,7 @@
             this.fetchImages();
             this.filesToUpload = [];
             this.previews = [];
+            this.isUploading = false;
           });
         },
 
@@ -89,44 +111,85 @@
 </head>
 
 <body class="dark:bg-black dark:text-white bg-white text-black min-h-screen transition-colors duration-300">
-  <header class="container mx-auto px-6 py-6 flex justify-between items-center">
-    <h1 class="text-2xl font-semibold">Image Workspace</h1>
-    <button @click="$root.classList.toggle('dark')" class="text-sm">Toggle Theme</button>
+  <header class="container mx-auto px-6 py-8 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+    <h1 class="text-4xl font-bold">Image Workspace</h1>
+    <button @click="$root.classList.toggle('dark')" class="text-sm px-3 py-1 border border-gray-400 rounded transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
+      Toggle Theme
+    </button>
   </header>
 
-  <main class="container mx-auto px-6 pb-12">
-    <section class="mb-8">
-      <input type="file" multiple @change="handleFileSelect" class="mb-2" />
-      <button @click="uploadFiles" class="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">
-        Upload
-      </button>
+  <main class="container mx-auto px-6 pb-16">
+    <section class="mb-10 border-b border-gray-200 dark:border-gray-700 pb-6">
+      <div
+        class="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+        @dragover.prevent
+        @drop.prevent="handleFileSelect($event)"
+        @click="$refs.fileInput.click()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-10 w-10 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16v-4m0 0V8m0 4h10m-4 0v4m0-4V8m0 4h4" />
+        </svg>
+        <p class="text-sm text-gray-600 dark:text-gray-400">Drag and drop images here or <span class="text-indigo-600 dark:text-indigo-400 underline">click to browse</span></p>
+        <input type="file" multiple accept="image/*" @change="handleFileSelect" class="hidden" x-ref="fileInput" />
+      </div>
 
-      <div class="flex flex-wrap gap-4 mt-4" x-show="previews.length">
+      <div class="flex flex-wrap gap-4 mt-6" x-show="previews.length">
         <template x-for="preview in previews" :key="preview.name">
-          <img :src="preview.url" class="w-32 h-32 object-cover rounded border" />
+          <div class="w-32 h-32 border border-gray-300 dark:border-gray-600 rounded overflow-hidden relative">
+            <img :src="preview.url" alt="" class="w-full h-full object-cover" />
+            <div class="absolute bottom-0 left-0 w-full text-xs text-white bg-black bg-opacity-60 px-1 py-0.5 truncate" x-text="preview.name"></div>
+          </div>
         </template>
+      </div>
+
+      <div class="flex gap-4 mt-4" x-show="previews.length">
+        <button @click="uploadFiles" class="bg-black text-white px-5 py-2 rounded transition-colors duration-300 hover:bg-gray-800">
+          <template x-if="isUploading">
+            <span>Uploading...</span>
+          </template>
+          <template x-if="!isUploading">
+            <span>Upload</span>
+          </template>
+        </button>
+        <button @click="filesToUpload = []; previews = []" class="px-5 py-2 border border-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+          Clear Files
+        </button>
       </div>
     </section>
 
+    <div x-show="galleryImages.length > 1" class="mb-6">
+      <form action="/clear" method="POST">
+        <button type="submit" class="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700">
+          Clear Gallery
+        </button>
+      </form>
+    </div>
+
     <section>
       <template x-if="isLoading">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
           <template x-for="i in 8">
-            <div class="w-full h-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
+            <div class="w-full aspect-square bg-gray-100 dark:bg-gray-800 animate-pulse rounded"></div>
           </template>
         </div>
       </template>
 
       <template x-if="!isLoading && galleryImages.length === 0">
-        <p class="text-gray-500 text-center mt-8">No images yet. Upload to get started.</p>
+        <p class="text-gray-500 dark:text-gray-400 text-center mt-12">No images yet. Upload to get started.</p>
       </template>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4" x-show="!isLoading && galleryImages.length > 0">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6" x-show="!isLoading && galleryImages.length > 0">
         <template x-for="img in galleryImages" :key="img.original_key">
-          <div class="rounded overflow-hidden border dark:border-gray-700">
-            <img :src="img.thumbnail_url" class="w-full h-40 object-cover" />
-            <div class="p-2 text-sm space-y-1">
-              <button @click="downloadPDF(img.original_key)" class="text-indigo-600 hover:underline">Download PDF</button>
+          <div class="rounded overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer transition-shadow duration-300 hover:shadow-lg aspect-square flex flex-col">
+            <img :src="img.thumbnail_url" alt="" class="w-full h-full object-cover flex-grow" />
+            <div class="p-3 text-sm border-t border-gray-200 dark:border-gray-700">
+              <button @click="downloadPDF(img.original_key)" class="text-black dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition-colors duration-200">
+                Download PDF
+              </button>
+              <form :action="'/delete'" method="POST" class="mt-2">
+                <input type="hidden" name="key" :value="img.original_key" />
+                <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+              </form>
             </div>
           </div>
         </template>
@@ -134,7 +197,7 @@
     </section>
   </main>
 
-  <footer class="border-t py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+  <footer class="border-t border-gray-200 dark:border-gray-700 mt-12 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
     &copy; 2025 Image Workspace. Developed by Alex Flores.
   </footer>
 </body>
