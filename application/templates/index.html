@@ -8,8 +8,59 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Alpine.js for dark mode toggle only -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Alpine.js for dark mode toggle and gallery features -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('galleryApp', () => ({
+                filesToUpload: [],
+                previews: [],
+                uploadProgress: 0,
+                isUploading: false,
+                galleryImages: [],
+                isLoading: false,
+                pollingInterval: null,
+
+                init() {
+                    this.isLoading = true;
+                    this.fetchImages();
+                    this.pollingInterval = setInterval(() => {
+                        this.fetchImages();
+                    }, 3000);
+                },
+
+                fetchImages() {
+                    fetch('/api/images')
+                        .then(response => response.json())
+                        .then(data => {
+                            this.galleryImages = data;
+                            this.isLoading = false;
+                        })
+                        .catch(err => {
+                            console.error('Failed to fetch images:', err);
+                            this.isLoading = false;
+                        });
+                },
+
+                handleFileSelect(event) {
+                    this.filesToUpload = Array.from(event.target.files);
+                    this.previews = [];
+                    if (this.filesToUpload.some(file => !file.type.startsWith('image/'))) {
+                        alert('Please select only image files.');
+                        this.filesToUpload = [];
+                        return;
+                    }
+                    for (const file of this.filesToUpload) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.previews.push({ name: file.name, url: e.target.result });
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                }
+            }));
+        });
+    </script>
 
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,6 +74,15 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                    },
+                    animation: {
+                        shimmer: 'shimmer 1.5s infinite linear',
+                    },
+                    keyframes: {
+                        shimmer: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(100%)' },
+                        }
                     },
                 }
             }
@@ -45,25 +105,35 @@
             <button @click="darkMode = !darkMode" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"><svg x-show="!darkMode" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg><svg x-show="darkMode" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg></button>
         </header>
 
-        <main class="container mx-auto px-4 py-8">
+        <main class="container mx-auto px-4 py-8" x-data="galleryApp()" x-init="init()">
             <div class="text-center mb-12">
-                <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">The Ultimate Cloud Image Toolkit</h2>
-                <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600 dark:text-gray-400">Upload, process, and transform your images with a powerful, serverless engine. Built on a highly available AWS architecture for unmatched performance and reliability.</p>
+                <h2 class="text-4xl md:text-5xl font-semibold text-gray-900 dark:text-white tracking-tight">Your Image Workspace</h2>
+                <p class="mt-4 max-w-2xl mx-auto text-base text-gray-500 dark:text-gray-400">Upload and manage your images in a streamlined, distraction-free environment.</p>
             </div>
 
             <div class="max-w-3xl mx-auto mb-12">
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-4 text-center">Upload New Images</h3>
-                        <form action="/upload" method="post" enctype="multipart/form-data" class="space-y-4">
-                            <div>
-                                <label for="file-upload" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select images to upload</label>
-                                <input id="file-upload" name="files" type="file" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
-                            </div>
-                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300">
-                                Upload
-                            </button>
-                        </form>
+                <div x-cloak>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                        <div class="p-6">
+                            <h3 class="text-xl font-medium mb-4 text-center text-gray-700 dark:text-gray-300">Upload</h3>
+                            <form action="/upload" method="post" enctype="multipart/form-data" class="space-y-4">
+                                <div>
+                                    <label for="file-upload" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select images to upload</label>
+                                    <input id="file-upload" name="files" type="file" multiple accept="image/*" @change="handleFileSelect" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                                </div>
+                                <div x-show="previews.length > 0" class="flex flex-wrap gap-4">
+                                    <template x-for="preview in previews" :key="preview.name">
+                                        <div class="flex flex-col items-center">
+                                            <img :src="preview.url" class="w-20 h-20 object-cover rounded border border-gray-300 dark:border-gray-600">
+                                            <p class="text-xs mt-1 text-gray-600 dark:text-gray-400 truncate w-20" x-text="preview.name"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                                <button type="submit" class="w-full bg-black hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-all duration-300">
+                                    Upload
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -72,12 +142,25 @@
                 <h3 class="text-2xl font-bold mb-3 sm:mb-0">Your Session Gallery</h3>
                 {% if has_images %}
                 <form action="/clear" method="post">
-                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors" onclick="return confirm('Are you sure you want to clear all images and start over?');"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg><span>Clear All</span></button>
+                    <button type="submit" class="bg-black hover:bg-gray-800 text-white font-medium py-2 px-4 rounded-md flex items-center space-x-2 transition-colors" onclick="return confirm('Are you sure you want to clear all images and start over?');"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg><span>Clear All</span></button>
                 </form>
                 {% endif %}
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" x-show="!isLoading">
+                <!-- Loading skeletons shown when isLoading is true -->
+                <template x-if="isLoading">
+                    <template x-for="i in 3">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse">
+                            <div class="w-full h-56 bg-gray-300 dark:bg-gray-700"></div>
+                            <div class="p-5 space-y-4">
+                                <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+                                <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                                <div class="h-10 bg-gray-300 dark:bg-gray-700 rounded mt-6"></div>
+                            </div>
+                        </div>
+                    </template>
+                </template>
                 {% for image in images %}
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <a href="{{ image.original_url }}" target="_blank" title="View full size original"><img src="{{ image.thumbnail_url }}" class="w-full h-56 object-cover" alt="Thumbnail"></a>

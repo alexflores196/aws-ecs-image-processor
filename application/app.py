@@ -82,6 +82,51 @@ def upload():
 
     return redirect(url_for('index'))
 
+from flask import jsonify  # Make sure this import is present at the top
+
+@app.route('/api/images')
+def api_images():
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+
+    session_id = session['session_id']
+    images = []
+
+    try:
+        prefix = f"{session_id}/thumbnails/"
+        response = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
+
+        if 'Contents' in response:
+            for thumb in response['Contents']:
+                thumb_key = thumb['Key']
+                original_filename = os.path.basename(thumb_key).replace('thumb-', '')
+                full_original_key = f"{session_id}/{original_filename}"
+
+                db_response = table.get_item(Key={'ImageKey': full_original_key})
+                item_data = db_response.get('Item', {})
+
+                if item_data:
+                    images.append({
+                        'thumbnail_url': s3.generate_presigned_url(
+                            'get_object',
+                            Params={'Bucket': S3_BUCKET, 'Key': thumb_key},
+                            ExpiresIn=3600
+                        ),
+                        'original_url': s3.generate_presigned_url(
+                            'get_object',
+                            Params={'Bucket': S3_BUCKET, 'Key': full_original_key},
+                            ExpiresIn=3600
+                        ),
+                        'original_key': full_original_key,
+                        'basic_metadata': item_data.get('BasicMetadata', {}),
+                        'enhanced_metadata': item_data.get('EnhancedMetadata', {})
+                    })
+
+    except Exception as e:
+        print(f"Error in /api/images: {e}")
+        return jsonify([]), 500
+
+    return jsonify(images)
 
 @app.route('/convert')
 def convert():
