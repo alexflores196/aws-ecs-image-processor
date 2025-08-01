@@ -1,12 +1,14 @@
 import os
 import boto3
 import uuid
-from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session
+from flask import Flask, render_template, request, redirect, url_for, send_file, abort, session, jsonify
 from PIL import Image
 import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
 
 app = Flask(__name__)
-
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-super-secret-key-for-dev')
 
 S3_BUCKET = os.environ.get('S3_BUCKET_NAME')
@@ -18,7 +20,6 @@ if not S3_BUCKET or not DYNAMODB_TABLE_NAME:
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
-
 
 @app.route('/')
 def index():
@@ -42,12 +43,8 @@ def index():
 
                 if item_data:
                     images.append({
-                        'thumbnail_url': s3.generate_presigned_url('get_object',
-                                                                   Params={'Bucket': S3_BUCKET, 'Key': thumb_key},
-                                                                   ExpiresIn=3600),
-                        'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET,
-                                                                                        'Key': full_original_key},
-                                                                  ExpiresIn=3600),
+                        'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
+                        'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
                         'original_key': full_original_key,
                         'basic_metadata': item_data.get('BasicMetadata', {}),
                         'enhanced_metadata': item_data.get('EnhancedMetadata', {})
@@ -58,14 +55,12 @@ def index():
 
     return render_template('index.html', images=images, has_images=(len(images) > 0))
 
-
 @app.route('/upload', methods=['POST'])
 def upload():
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
     session_id = session['session_id']
 
-    # Handle multi-file uploads from a standard form
     files = request.files.getlist('files')
     if not files:
         return redirect(url_for('index'))
@@ -81,8 +76,6 @@ def upload():
                 print(f"Error uploading file {file.filename}: {e}")
 
     return redirect(url_for('index'))
-
-from flask import jsonify  # Make sure this import is present at the top
 
 @app.route('/api/images')
 def api_images():
@@ -107,16 +100,8 @@ def api_images():
 
                 if item_data:
                     images.append({
-                        'thumbnail_url': s3.generate_presigned_url(
-                            'get_object',
-                            Params={'Bucket': S3_BUCKET, 'Key': thumb_key},
-                            ExpiresIn=3600
-                        ),
-                        'original_url': s3.generate_presigned_url(
-                            'get_object',
-                            Params={'Bucket': S3_BUCKET, 'Key': full_original_key},
-                            ExpiresIn=3600
-                        ),
+                        'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
+                        'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
                         'original_key': full_original_key,
                         'basic_metadata': item_data.get('BasicMetadata', {}),
                         'enhanced_metadata': item_data.get('EnhancedMetadata', {})
@@ -141,33 +126,54 @@ def convert():
 
         response = s3.get_object(Bucket=S3_BUCKET, Key=key)
         image_bytes = response['Body'].read()
-        img = Image.open(io.BytesIO(image_bytes))
 
+        base_name = os.path.splitext(os.path.basename(key))[0]
+
+        if target_format == 'pdf':
+            from PIL import Image as PilImage
+            pdf_buffer = io.BytesIO()
+            c = canvas.Canvas(pdf_buffer, pagesize=letter)
+            image_reader = ImageReader(io.BytesIO(image_bytes))
+            pil_img = PilImage.open(io.BytesIO(image_bytes))
+            img_width, img_height = pil_img.size
+            max_width, max_height = letter
+            scale = min(max_width / img_width, max_height / img_height)
+            new_width = img_width * scale
+            new_height = img_height * scale
+            x = (max_width - new_width) / 2
+            y = (max_height - new_height) / 2
+            c.drawImage(image_reader, x, y, width=new_width, height=new_height, preserveAspectRatio=True, mask='auto')
+            c.showPage()
+            c.save()
+            pdf_buffer.seek(0)
+            return send_file(
+                pdf_buffer,
+                as_attachment=True,
+                download_name=f"{base_name}_converted.pdf",
+                mimetype='application/pdf'
+            )
+
+        img = Image.open(io.BytesIO(image_bytes))
         if width and height:
             img = img.resize((width, height), Image.Resampling.LANCZOS)
 
-        buffer = io.BytesIO()
-        img_format_pil = 'JPEG' if target_format == 'jpg' else target_format.upper()
-
-        if img.mode == 'RGBA' and (img_format_pil == 'JPEG'):
+        if img.mode == 'RGBA' and target_format == 'jpg':
             img = img.convert('RGB')
 
+        buffer = io.BytesIO()
+        img_format_pil = 'JPEG' if target_format == 'jpg' else target_format.upper()
         img.save(buffer, format=img_format_pil)
         buffer.seek(0)
-
-        base_name = os.path.splitext(os.path.basename(key))[0]
-        download_name = f"{base_name}_converted.{target_format}"
 
         return send_file(
             buffer,
             as_attachment=True,
-            download_name=download_name,
+            download_name=f"{base_name}_converted.{target_format}",
             mimetype=f'image/{target_format}'
         )
     except Exception as e:
         print(f"Error converting image: {e}")
         abort(500, 'Error during image conversion')
-
 
 @app.route('/delete', methods=['POST'])
 def delete():
@@ -183,7 +189,6 @@ def delete():
         print(f"Error deleting image: {e}")
     return redirect(url_for('index'))
 
-
 @app.route('/clear', methods=['POST'])
 def clear():
     if 'session_id' in session:
@@ -192,17 +197,13 @@ def clear():
         pages = s3_paginator.paginate(Bucket=S3_BUCKET, Prefix=f"{session_id}/")
         for page in pages:
             if 'Contents' in page:
-                # Batch delete objects for efficiency
                 objects_to_delete = [{'Key': obj['Key']} for obj in page['Contents']]
                 s3.delete_objects(Bucket=S3_BUCKET, Delete={'Objects': objects_to_delete})
-                # Batch delete from DynamoDB
                 with table.batch_writer() as batch:
                     for obj in objects_to_delete:
                         batch.delete_item(Key={'ImageKey': obj['Key']})
-
     session.clear()
     return redirect(url_for('index'))
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
