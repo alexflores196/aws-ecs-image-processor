@@ -148,9 +148,11 @@
             this.filesToUpload = [];
             this.previews = [];
             this.isUploading = false;
+            window.dispatchEvent(new CustomEvent('toast', { detail: 'Upload successful!' }));
           }).catch(err => {
             alert('Upload failed. Please try again.');
             console.error('Upload error:', err);
+            window.dispatchEvent(new CustomEvent('toast', { detail: 'Upload failed. Please try again.' }));
             this.isUploading = false;
           });
         },
@@ -165,8 +167,17 @@
 
 <body x-data="galleryApp" x-init="init()" class="bg-black text-white min-h-screen transition-colors duration-300 relative font-light">
   <nav class="fixed top-4 right-6 z-50 flex items-center space-x-6 text-white font-light tracking-widest uppercase text-sm">
-    <a href="#upload" class="hover:text-indigo-400 transition-colors duration-300">Upload</a>
-    <a href="#gallery" class="hover:text-indigo-400 transition-colors duration-300">Gallery</a>
+    <div x-data="{ open: false }" class="relative">
+      <button @click="open = !open" class="p-2 rounded hover:bg-gray-700 transition-colors duration-300" aria-label="Menu">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded shadow-lg z-50 text-left">
+        <a href="https://www.alexflores.cloud" class="block px-4 py-2 text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Home</a>
+        <a href="https://www.alexflores.cloud/about" class="block px-4 py-2 text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">About Me</a>
+      </div>
+    </div>
     <button @click="toggleDarkMode" class="p-1 rounded hover:bg-gray-700 transition-colors duration-300" aria-label="Toggle Dark Mode" type="button" x-html="darkMode ? `
       <svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
         <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 3v1m0 16v1m8.66-10h-1M4.34 12h-1m15.364 4.364l-.707-.707M6.343 6.343l-.707-.707m12.02 12.02l-.707-.707M6.343 17.657l-.707-.707M12 7a5 5 0 100 10 5 5 0 000-10z' />
@@ -178,13 +189,13 @@
     `"></button>
   </nav>
 
-  <section class="h-screen flex flex-col justify-center items-center text-center px-6">
-    <h1 class="text-6xl font-light tracking-widest uppercase mb-4">Image Studio Pro</h1>
-    <p class="text-xl font-light tracking-widest uppercase max-w-xl text-gray-400">Precision Meets Simplicity</p>
+  <section class="py-8 flex flex-col justify-center items-center text-center px-6">
+    <h2 class="text-xl sm:text-2xl font-light mb-4 tracking-widest uppercase">Image Studio Pro</h2>
+    <p class="text-xl font-light tracking-widest uppercase max-w-xl text-gray-400">Upload. Enhance. Export.</p>
   </section>
 
-  <main class="container mx-auto px-6 pb-16 relative z-10">
-    <section id="upload" class="mb-10 border-b border-gray-200 border-gray-700 pb-6">
+  <main class="container mx-auto px-6 pb-8 relative z-10">
+    <section id="upload" class="mb-6 border-b border-gray-200 border-gray-700 pb-6">
       <p class="text-center text-sm uppercase font-light tracking-widest text-white mb-6">Upload Your Visual Assets</p>
       <div
         class="w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition backdrop-blur-sm bg-white/10 border-white/10"
@@ -238,7 +249,6 @@
     </div>
 
     <section id="gallery" class="relative">
-      <h2 class="absolute -left-16 top-1/2 transform -translate-y-1/2 text-white/10 text-8xl font-light tracking-widest uppercase select-none pointer-events-none user-select-none" aria-hidden="true" style="writing-mode: vertical-rl; letter-spacing: 0.25em;">Studio</h2>
 
       <template x-if="isLoading && !hasLoadedOnce">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6" x-cloak>
@@ -249,21 +259,35 @@
       </template>
 
       <template x-if="!isLoading && galleryImages.length === 0">
-        <p class="text-gray-400 text-center mt-12 uppercase tracking-widest font-light" x-cloak>No images yet. Upload to get started.</p>
+        <p class="text-gray-400 text-center mt-6 uppercase tracking-widest font-light" x-cloak>No images yet. Upload to get started.</p>
       </template>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-6 transition-opacity duration-700 ease-in-out" x-show="!isLoading && galleryImages.length > 0" x-cloak>
         <template x-for="img in galleryImages" :key="img.original_key">
           <div class="rounded overflow-hidden border cursor-pointer transition-shadow duration-300 hover:shadow-lg aspect-square flex flex-col border-white/10 transition-opacity duration-700 ease-in-out">
             <img :src="img.thumbnail_url" :alt="img.original_key" class="w-full h-full object-cover flex-grow" />
-            <div class="p-3 text-sm border-t border-white/10">
-              <button @click="downloadPDF(img.original_key)" class="text-gray-300 hover:text-white transition-colors duration-200 tracking-widest uppercase font-light">
-                Download PDF
+            <p class="px-3 pt-2 text-xs text-gray-400 truncate" x-text="img.original_key.split('/').pop()"></p>
+            <div class="p-3 text-sm border-t border-white/10 space-y-1 relative" x-data="{ open: false }">
+              <button @click="open = !open" class="w-full text-left text-gray-300 hover:text-white tracking-widest uppercase font-light bg-black border border-white/10 px-3 py-2 rounded">
+                <span class="flex justify-between items-center w-full">
+                  Actions
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
               </button>
-              <form :action="'/delete'" method="POST" class="mt-2">
-                <input type="hidden" name="key" :value="img.original_key" />
-                <button type="submit" class="text-red-500 hover:text-red-700 text-xs tracking-widest uppercase font-light">Delete</button>
-              </form>
+              <div x-show="open" @click.away="open = false" x-transition class="absolute top-full left-0 w-full mt-1 bg-black border border-white/10 rounded z-10">
+                <button @click="downloadPDF(img.original_key)" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Download PDF</button>
+                <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=jpeg'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to JPEG</a>
+                <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=png'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to PNG</a>
+                <a :href="'/convert?key=' + encodeURIComponent(img.original_key) + '&format=webp'" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Convert to WebP</a>
+                <a :href="'/metadata?key=' + encodeURIComponent(img.original_key)" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">View Metadata</a>
+                <a :href="'/resize?key=' + encodeURIComponent(img.original_key)" target="_blank" class="block w-full text-left text-gray-300 hover:text-white px-3 py-2 text-xs">Change Resolution</a>
+                <form :action="'/delete'" method="POST">
+                  <input type="hidden" name="key" :value="img.original_key" />
+                  <button type="submit" class="w-full text-left text-red-500 hover:text-red-700 px-3 py-2 text-xs">Delete</button>
+                </form>
+              </div>
             </div>
           </div>
         </template>
@@ -271,8 +295,20 @@
     </section>
   </main>
 
-  <footer class="border-t border-gray-200 border-gray-700 mt-12 py-6 text-center text-sm text-gray-400 tracking-widest uppercase font-light">
+  <footer class="border-t border-gray-200 border-gray-700 mt-6 py-6 text-center text-sm text-gray-400 tracking-widest uppercase font-light">
     &copy; 2025 Image Studio Pro. Built by Alex Flores.
   </footer>
+
+  <div x-data="{ show: false, message: '' }" x-show="show" x-transition
+       class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 text-black dark:text-white text-sm px-4 py-2 rounded shadow z-50"
+       x-init="
+         document.addEventListener('toast', e => {
+           message = e.detail;
+           show = true;
+           setTimeout(() => show = false, 3000);
+         });
+       "
+       x-text="message">
+  </div>
 </body>
 </html>
