@@ -1,3 +1,4 @@
+# Triggering a fresh CodePipeline build with updated requirements.txt
 import os
 import boto3
 import uuid
