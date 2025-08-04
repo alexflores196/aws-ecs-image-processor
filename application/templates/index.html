@@ -44,7 +44,12 @@
             .then(data => {
               this.galleryImages = data.map(img => {
                 const existing = this.galleryImages.find(i => i.original_key === img.original_key) || {};
-                return { ...img, resizeWidth: existing.resizeWidth, resizeHeight: existing.resizeHeight };
+                return {
+                  ...img,
+                  resizeWidth: existing.resizeWidth,
+                  resizeHeight: existing.resizeHeight,
+                  selectedFormat: existing.selectedFormat
+                };
               });
             });
         },
@@ -69,15 +74,28 @@
               this.previews = [];
             });
         },
-        downloadPDF(key) {
-          window.open(`/convert?key=${encodeURIComponent(key)}&format=pdf`, '_blank');
+        downloadImage(img) {
+          const params = new URLSearchParams({ key: img.original_key });
+          const format = img.selectedFormat || (img.metadata.basic.format ? img.metadata.basic.format.toLowerCase() : '');
+          if (format) params.append('format', format);
+          if (img.resizeWidth) params.append('width', img.resizeWidth);
+          if (img.resizeHeight) params.append('height', img.resizeHeight);
+          window.open('/convert?' + params.toString(), '_blank');
+        },
+        deleteImage(img) {
+          fetch('/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ key: img.original_key })
+          }).then(() => this.fetchImages());
         }
       }));
     });
   </script>
 </head>
-<body class="bg-black text-white font-sans min-h-screen" x-init="init()">
-  <header class="text-center py-6">
+<body class="bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white font-sans min-h-screen" x-init="init()">
+  <header class="relative text-center py-6">
+    <a href="https://www.alexflores.cloud" class="absolute right-4 top-4 text-sm text-gray-400 hover:text-white">Home</a>
     <h1 class="text-2xl font-semibold uppercase tracking-widest">Image Studio Pro</h1>
     <p class="text-gray-400 tracking-wide text-sm uppercase">Upload. Enhance. Export.</p>
   </header>
@@ -101,61 +119,45 @@
 
     <section x-show="galleryImages.length" x-cloak class="grid grid-cols-2 md:grid-cols-4 gap-6">
       <template x-for="img in galleryImages" :key="img.original_key">
-        <div class="bg-gray-800 rounded overflow-hidden shadow text-sm" x-data="{ tab: 'options' }">
+        <div class="bg-gray-800 rounded overflow-hidden shadow text-sm transform hover:scale-105 transition" x-data="{ tab: 'options' }">
           <img :src="img.original_url" class="w-full h-40 object-cover" loading="lazy" />
           <div class="p-3">
             <div class="mt-3">
-              <div class="flex border-b border-gray-700 mb-3">
-                <button @click="tab = 'options'" :class="{ 'border-b-2 border-white': tab === 'options' }" class="flex-1 pb-1 text-center text-xs">Options</button>
-                <button @click="tab = 'metadata'" :class="{ 'border-b-2 border-white': tab === 'metadata' }" class="flex-1 pb-1 text-center text-xs">Metadata</button>
+              <div class="flex mb-3 rounded overflow-hidden text-xs">
+                <button @click="tab = 'options'" :class="tab === 'options' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300'" class="flex-1 py-2 transition-colors">Options</button>
+                <button @click="tab = 'metadata'" :class="tab === 'metadata' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300'" class="flex-1 py-2 transition-colors">Metadata</button>
               </div>
 
-              <div x-show="tab === 'options'" x-cloak>
-                <label class="block text-xs text-gray-400 uppercase mb-1 px-1">
-                  Format (<span x-text="img.metadata.basic.format || 'N/A'"></span>)
-                </label>
-                <select @change="event => {
-                  const format = event.target.value;
-                  if (format === 'pdf') {
-                    downloadPDF(img.original_key);
-                  } else {
-                    window.open('/convert?key=' + encodeURIComponent(img.original_key) + '&format=' + format, '_blank');
-                  }
-                }}" class="w-full bg-black border border-white/20 rounded px-3 py-2 text-sm text-white">
-                  <option value="">Select Format</option>
-                  <option value="pdf">Download PDF</option>
-                  <option value="jpeg">Convert to JPEG</option>
-                  <option value="png">Convert to PNG</option>
-                  <option value="webp">Convert to WebP</option>
-                </select>
-
-                <label class="block text-xs text-gray-400 uppercase mt-4 mb-1 px-1">
-                  Resolution (<span x-text="img.metadata.basic.size || 'N/A'"></span>)
-                </label>
-                <div class="space-y-2">
-                  <input type="number" min="1" placeholder="Width" x-model.number="img.resizeWidth" class="w-full bg-black border border-white/20 rounded px-3 py-2 text-sm text-white" />
-                  <input type="number" min="1" placeholder="Height" x-model.number="img.resizeHeight" class="w-full bg-black border border-white/20 rounded px-3 py-2 text-sm text-white" />
+              <div x-show="tab === 'options'" x-cloak class="bg-gray-700/50 rounded p-3 space-y-4">
+                <div>
+                  <label class="block text-xs text-gray-400 uppercase mb-1">Format (<span x-text="img.metadata.basic.format || 'N/A'"></span>)</label>
+                  <select x-model="img.selectedFormat" class="w-full bg-gray-900 border border-white/20 rounded px-3 py-2 text-sm text-white">
+                    <option value="">Select Format</option>
+                    <option value="pdf">PDF</option>
+                    <option value="jpeg">JPEG</option>
+                    <option value="png">PNG</option>
+                    <option value="webp">WEBP</option>
+                  </select>
                 </div>
-                <button @click="window.open('/convert?key=' + encodeURIComponent(img.original_key) + '&format=' + (img.metadata.basic.format ? img.metadata.basic.format.toLowerCase() : '') + '&width=' + (img.resizeWidth || '') + '&height=' + (img.resizeHeight || ''), '_blank')" class="mt-2 bg-white text-black px-3 py-2 rounded text-sm hover:bg-gray-300 transition w-full">
-                  Resize
-                </button>
 
-                <div class="pt-4 flex gap-2">
-                  <a :href="img.original_url" target="_blank" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-3 rounded text-sm text-center">
-                    Download
-                  </a>
-                  <button @click="fetch('/delete', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ key: img.original_key }).toString() }).then(() => fetchImages())" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-3 rounded text-sm">
-                    Delete
-                  </button>
+                <div>
+                  <label class="block text-xs text-gray-400 uppercase mb-1">Resolution (<span x-text="img.metadata.basic.size || 'N/A'"></span>)</label>
+                  <div class="space-y-2">
+                    <input type="number" min="1" placeholder="Width" x-model.number="img.resizeWidth" class="w-full bg-gray-900 border border-white/20 rounded px-3 py-2 text-sm text-white" />
+                    <input type="number" min="1" placeholder="Height" x-model.number="img.resizeHeight" class="w-full bg-gray-900 border border-white/20 rounded px-3 py-2 text-sm text-white" />
+                  </div>
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                  <button @click="downloadImage(img)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-4 rounded text-sm">Download</button>
+                  <button @click="deleteImage(img)" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-4 rounded text-sm">Delete</button>
                 </div>
               </div>
 
-              <div x-show="tab === 'metadata'" x-cloak>
-                <div class="bg-gray-700 rounded p-2 text-xs text-gray-200 space-y-1 max-h-40 overflow-y-auto">
-                  <template x-for="[key, value] in Object.entries(img.metadata.basic || {})" :key="key">
-                    <div><span class="capitalize" x-text="key"></span>: <span x-text="value"></span></div>
-                  </template>
-                </div>
+              <div x-show="tab === 'metadata'" x-cloak class="bg-gray-700/50 rounded p-3 max-h-40 overflow-y-auto text-xs space-y-1">
+                <template x-for="[key, value] in Object.entries(img.metadata.basic || {})" :key="key">
+                  <div class="flex justify-between"><span class="capitalize text-gray-300" x-text="key"></span><span class="text-gray-100" x-text="value"></span></div>
+                </template>
               </div>
             </div>
           </div>
