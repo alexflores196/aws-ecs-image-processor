@@ -42,14 +42,17 @@ def index():
                 db_response = table.get_item(Key={'ImageKey': full_original_key})
                 item_data = db_response.get('Item', {})
 
-                if item_data:
-                    images.append({
-                        'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
-                        'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
-                        'original_key': full_original_key,
-                        'basic_metadata': item_data.get('BasicMetadata') or {},
-                        'enhanced_metadata': item_data.get('EnhancedMetadata') or {}
-                    })
+                metadata = {
+                    'basic': item_data.get('BasicMetadata') or {},
+                    'enhanced': item_data.get('EnhancedMetadata') or {}
+                }
+
+                images.append({
+                    'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
+                    'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
+                    'original_key': full_original_key,
+                    'metadata': metadata
+                })
     except Exception as e:
         print(f"Error retrieving data: {e}")
         images = []
@@ -99,14 +102,17 @@ def api_images():
                 db_response = table.get_item(Key={'ImageKey': full_original_key})
                 item_data = db_response.get('Item', {})
 
-                if item_data:
-                    images.append({
-                        'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
-                        'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
-                        'original_key': full_original_key,
-                        'basic_metadata': item_data.get('BasicMetadata') or {},
-                        'enhanced_metadata': item_data.get('EnhancedMetadata') or {}
-                    })
+                metadata = {
+                    'basic': item_data.get('BasicMetadata') or {},
+                    'enhanced': item_data.get('EnhancedMetadata') or {}
+                }
+
+                images.append({
+                    'thumbnail_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': thumb_key}, ExpiresIn=3600),
+                    'original_url': s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': full_original_key}, ExpiresIn=3600),
+                    'original_key': full_original_key,
+                    'metadata': metadata
+                })
 
     except Exception as e:
         print(f"Error in /api/images: {e}")

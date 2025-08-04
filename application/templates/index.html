@@ -110,7 +110,7 @@
                 } else {
                   window.open('/convert?key=' + encodeURIComponent(img.original_key) + '&format=' + format, '_blank');
                 }
-              }" class="w-full bg-black border border-white/20 rounded px-3 py-2 text-sm text-white">
+              }}" class="w-full bg-black border border-white/20 rounded px-3 py-2 text-sm text-white">
                 <option value="">Select Format</option>
                 <option value="pdf">Download PDF</option>
                 <option value="jpeg">Convert to JPEG</option>
@@ -132,16 +132,20 @@
 
               <div>
                 <p class="text-xs text-gray-400 pt-2 px-3 uppercase">Metadata</p>
-                <div class="px-3 py-1 text-xs text-indigo-400 space-y-1" x-data="{ basic: img.metadata?.basic || 'N/A', enhanced: img.metadata?.enhanced || 'N/A' }">
+                <div class="px-3 py-1 text-xs text-indigo-400 space-y-1"
+                     x-data="{
+                       basic: Object.keys(img.metadata.basic || {}).length ? JSON.stringify(img.metadata.basic) : 'N/A',
+                       enhanced: Object.keys(img.metadata.enhanced || {}).length ? JSON.stringify(img.metadata.enhanced) : 'N/A'
+                     }">
                   <div><strong>Basic:</strong> <span x-text="basic"></span></div>
                   <div><strong>Enhanced:</strong> <span x-text="enhanced"></span></div>
                 </div>
                 <a :href="img.original_url" target="_blank" class="block bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded text-xs mt-1 text-center">
                   Download
                 </a>
-                <form :action="'/delete'" method="POST" class="px-3 pt-1 pb-2">
-                  <input type="hidden" name="key" :value="img.original_key" />
-                  <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                <form :action=\"'/delete'\" method=\"POST\" class=\"px-3 pt-1 pb-2\">
+                  <input type=\"hidden\" name=\"key\" :value=\"img.original_key\" />
+                  <button type=\"submit\" class=\"text-red-500 hover:text-red-700 text-xs\">Delete</button>
                 </form>
               </div>
             </div>
